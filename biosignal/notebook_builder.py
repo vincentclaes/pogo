@@ -8,10 +8,10 @@ Design goals:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Any, Iterable, Optional
+import base64
 
 
 NBFORMAT = 4
@@ -84,30 +84,23 @@ class NotebookBuilder:
         )
 
     def add_title_block(self) -> None:
-        parts = [f"# {self.title}", "", "Audience:"]
-        if self.audience:
-            parts.append(f"- {self.audience}")
-        else:
-            parts.append("- (fill in)")
-        parts.append("")
-        parts.append("Prerequisites:")
-        if self.prerequisites:
-            parts.extend([f"- {p}" for p in self.prerequisites])
-        else:
-            parts.append("- (fill in)")
-        parts.append("")
-        parts.append("Learning goals:")
-        if self.goals:
-            parts.extend([f"- {g}" for g in self.goals])
-        else:
-            parts.append("- (fill in)")
-
-        self.add_markdown("\n".join(parts))
+        self.add_markdown(f"# {self.title}")
 
     def add_section(self, title: str, body: Optional[str] = None) -> None:
         self.add_markdown(f"## {title}")
         if body:
             self.add_markdown(body)
+
+    def add_setup(self, dataset_path: str) -> None:
+        self.add_section("Setup")
+        code = (
+            "from pathlib import Path\n"
+            "import duckdb\n"
+            "from app.ingestion import load_dataset\n\n"
+            f"DATASET_PATH = Path(r\"{dataset_path}\")\n"
+            "con, tables = load_dataset(DATASET_PATH)\n"
+        )
+        self.add_code(code)
 
     def add_intent(self, user_text: str, parsed_intent: str, confidence: Optional[float] = None) -> None:
         score = "" if confidence is None else f" (confidence: {confidence:.2f})"
@@ -125,11 +118,18 @@ class NotebookBuilder:
         self.add_section("Clarification")
         self.add_markdown(f"Question: {question}")
 
-    def add_sql(self, sql: str, description: Optional[str] = None, result_limit: int = 5) -> None:
-        self.add_section("SQL")
+    def add_sql(
+        self,
+        sql: str,
+        description: Optional[str] = None,
+        result_limit: int = 5,
+        title: Optional[str] = None,
+    ) -> None:
+        self.add_section(title or "Reasoning")
         if description:
             self.add_markdown(description)
         code = (
+            "# Query used\n"
             "query = '''\n"
             + sql
             + "\n'''\n"
@@ -143,9 +143,37 @@ class NotebookBuilder:
         self.add_markdown(_markdown_table(rows))
 
     def add_visualization(self, code: str, description: Optional[str] = None) -> None:
-        self.add_section("Visualization")
+        self.add_section("What We See and Why")
         if description:
             self.add_markdown(description)
+        self.add_code(code)
+
+    def add_image(self, image_path: str, caption: Optional[str] = None, embed: bool = True) -> None:
+        self.add_section("What We See and Why")
+        if caption:
+            self.add_markdown(caption)
+
+        path = Path(image_path)
+        if embed and path.exists():
+            data = base64.b64encode(path.read_bytes()).decode("ascii")
+            outputs = [
+                {
+                    "output_type": "display_data",
+                    "data": {"image/png": data},
+                    "metadata": {},
+                }
+            ]
+            code = (
+                "from IPython.display import Image, display\n"
+                f"display(Image(r\"{path}\"))\n"
+            )
+            self.add_code(code, outputs=outputs)
+            return
+
+        code = (
+            "from IPython.display import Image, display\n"
+            f"display(Image(\"{image_path}\"))"
+        )
         self.add_code(code)
 
     def add_note(self, text: str) -> None:
@@ -181,6 +209,7 @@ class NotebookBuilder:
 class NotebookRecorder:
     path: Path
     title: str
+    dataset_path: Optional[str] = None
     builder: NotebookBuilder = field(init=False)
 
     def __post_init__(self) -> None:
@@ -189,7 +218,8 @@ class NotebookRecorder:
         else:
             self.builder = NotebookBuilder(title=self.title)
             self.builder.add_title_block()
-            self.builder.add_section("Session", f"Started: {datetime.now(timezone.utc).isoformat()}")
+            if self.dataset_path:
+                self.builder.add_setup(self.dataset_path)
 
     def append_intent(self, user_text: str, parsed_intent: str, confidence: Optional[float] = None) -> None:
         self.builder.add_intent(user_text, parsed_intent, confidence)
@@ -199,8 +229,14 @@ class NotebookRecorder:
         self.builder.add_clarification(question)
         self.builder.write(self.path)
 
-    def append_sql(self, sql: str, description: Optional[str] = None, result_limit: int = 5) -> None:
-        self.builder.add_sql(sql, description=description, result_limit=result_limit)
+    def append_sql(
+        self,
+        sql: str,
+        description: Optional[str] = None,
+        result_limit: int = 5,
+        title: Optional[str] = None,
+    ) -> None:
+        self.builder.add_sql(sql, description=description, result_limit=result_limit, title=title)
         self.builder.write(self.path)
 
     def append_result_preview(self, rows: list[dict[str, Any]], title: str = "Result Preview") -> None:
@@ -209,6 +245,10 @@ class NotebookRecorder:
 
     def append_visualization(self, code: str, description: Optional[str] = None) -> None:
         self.builder.add_visualization(code, description=description)
+        self.builder.write(self.path)
+
+    def append_image(self, image_path: str, caption: Optional[str] = None, embed: bool = True) -> None:
+        self.builder.add_image(image_path, caption=caption, embed=embed)
         self.builder.write(self.path)
 
     def append_note(self, text: str) -> None:

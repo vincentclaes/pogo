@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 import duckdb
 import pandas as pd
+from loguru import logger
 
 from biosignal.notebook_builder import NotebookRecorder
 from .intent import infer_intent, Intent
@@ -74,6 +75,7 @@ class Agent:
             self.recorder.append_clarification(clarification)
 
         plan: QueryPlan = generate_sql(intent, self.sketch, self.table_row_counts)
+        logger.info("plan: {} -> {}", intent.type, plan.description)
         df = self.con.execute(plan.sql).df()
 
         table_path = self.table_dir / f"table_{step_index}.csv"
@@ -88,13 +90,13 @@ class Agent:
         self.recorder.append_intent(prompt, intent.type, intent.confidence)
         if clarification:
             self.recorder.append_clarification(clarification)
-        self.recorder.append_sql(plan.sql, description=plan.description)
+        self.recorder.append_sql(plan.sql, description=plan.description, title="Reasoning")
         self.recorder.append_result_preview(_df_preview(df))
         if plot_paths:
             for plot in plots:
-                self.recorder.append_visualization(
-                    code=f"# Saved chart: {plot.path.name}",
-                    description=f"Chart type: {plot.chart_type}",
+                self.recorder.append_image(
+                    image_path=str(plot.path),
+                    caption=f"Chart type: {plot.chart_type}",
                 )
         if notes:
             self.recorder.append_note("\n".join(notes))

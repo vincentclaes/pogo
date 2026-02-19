@@ -18,10 +18,13 @@ def _matplotlib_available() -> bool:
 def test_airway_cli_end_to_end():
     repo_root = Path(__file__).resolve().parents[1]
     dataset_dir = repo_root / "tests" / "fixtures" / "airway"
-    out_dir = repo_root / "tmp" / "airway_e2e"
+    base_out_dir = repo_root / "tmp" / "airway_e2e"
 
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
+    if base_out_dir.exists():
+        shutil.rmtree(base_out_dir)
+    for candidate in base_out_dir.parent.glob(f"{base_out_dir.name}_*"):
+        if candidate.is_dir():
+            shutil.rmtree(candidate)
 
     prompts = [
         "What are the top upregulated genes after dex treatment?",
@@ -38,13 +41,20 @@ def test_airway_cli_end_to_end():
         "--dataset",
         str(dataset_dir),
         "--out",
-        str(out_dir),
+        str(base_out_dir),
     ]
     for prompt in prompts:
         cmd.extend(["--prompt", prompt])
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+    run_dirs = sorted(
+        [p for p in base_out_dir.parent.glob(f"{base_out_dir.name}_*") if p.is_dir()],
+        key=lambda p: p.stat().st_mtime,
+    )
+    assert run_dirs, "No output directory created"
+    out_dir = run_dirs[-1]
 
     summary_path = out_dir / "summary.json"
     notebook_path = out_dir / "session.ipynb"

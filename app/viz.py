@@ -15,6 +15,8 @@ class PlotSpec:
 
 def _try_import_matplotlib():
     try:
+        import matplotlib  # type: ignore
+        matplotlib.use("Agg", force=True)
         import matplotlib.pyplot as plt  # type: ignore
         return plt
     except Exception:
