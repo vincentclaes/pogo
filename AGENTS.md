@@ -9,6 +9,7 @@ Build **biosignal**, a dataset-agnostic generative BI app for non-technical biol
 - **Runtime learning**: Profile data on load to infer columns, types, and likely group-bys.
 - **Explainable**: Show the SQL, a table preview, and a chart suggestion.
 - **Reproducible**: Every step is logged to a notebook (intent, SQL, results, notes, visuals).
+- **LLM-driven content**: The LLM must provide titles and explanations for each query step and chart.
 
 ## Supported Input Formats (MVP)
 - CSV
@@ -36,6 +37,12 @@ This profile feeds the semantic sketch used for intent mapping.
 4. **Execute query** in DuckDB.
 5. **Summarize** results and provide a visualization.
 6. **Confirm**: "Is this what you wanted?" If no, refine.
+
+## LLM Responsibilities (Required)
+- Provide a **short title** for each query step.
+- Provide **reasoning/explanation** for why the query is run.
+- Provide **"what we see and why"** captions for charts.
+- Ask **at most one** clarification question when needed.
 
 ## Notebook Export
 - Every agent step becomes a notebook cell:
