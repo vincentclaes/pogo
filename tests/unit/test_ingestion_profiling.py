@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from app.ingestion import load_dataset
-from app.profiling import profile_dataset
+from pogo.ingestion import load_dataset
+from pogo.profiling import profile_dataset
 
 
 def test_ingestion_and_profiling(tmp_path: Path):

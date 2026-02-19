@@ -74,7 +74,7 @@ Build a lightweight generative BI app that:
 
 ### Phase 4 - CLI + Test Harness
 1. **CLI runner**
-- `python -m app.cli run --dataset <path> --prompt <text> --out <dir>`
+- `python -m pogo.cli run --dataset <path> --prompt <text> --out <dir>`
 - Outputs:
   - `session.ipynb` (sequential notebook)
   - `summary.json` (intent, SQL, stats)

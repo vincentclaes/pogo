@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from app.viz import generate_plots
+from pogo.viz import generate_plots
 
 
 def test_generate_plots(tmp_path: Path):

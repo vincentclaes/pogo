@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from app.ingestion import load_dataset
-from app.profiling import profile_dataset
-from app.semantic_sketch import build_semantic_sketch
+from pogo.ingestion import load_dataset
+from pogo.profiling import profile_dataset
+from pogo.semantic_sketch import build_semantic_sketch
 
 
 def test_semantic_sketch_roles(tmp_path: Path):

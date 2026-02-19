@@ -2,7 +2,7 @@ import base64
 import json
 from pathlib import Path
 
-from app.nbexport import export_markdown_with_images
+from pogo.nbexport import export_markdown_with_images
 
 _MIN_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="

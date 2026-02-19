@@ -8,7 +8,7 @@
 ## E2E CLI Contract (Planned)
 Command:
 ```
-python -m app.cli run --dataset <path> --prompt <text> --out <dir>
+python -m pogo.cli run --dataset <path> --prompt <text> --out <dir>
 ```
 
 Expected outputs (written to a new timestamped folder based on `<dir>`):

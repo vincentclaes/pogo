@@ -199,7 +199,7 @@ class NotebookBuilder:
         code = (
             "from pathlib import Path\n"
             "import duckdb\n"
-            "from app.ingestion import load_dataset\n\n"
+            "from pogo.ingestion import load_dataset\n\n"
             f"DATASET_PATH = Path(r\"{dataset_path}\")\n"
             "con, tables = load_dataset(DATASET_PATH)\n"
         )

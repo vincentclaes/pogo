@@ -1,6 +1,6 @@
-from app.intent import Intent
-from app.semantic_sketch import SemanticSketch
-from app.sql_generator import generate_sql
+from pogo.intent import Intent
+from pogo.semantic_sketch import SemanticSketch
+from pogo.sql_generator import generate_sql
 
 
 def test_generate_sql_count_by_category():
