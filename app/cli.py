@@ -13,7 +13,6 @@ from loguru import logger
 
 from biosignal.notebook_builder import NotebookRecorder
 
-from .agent import Agent
 from .ingestion import load_dataset
 from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
 from .profiling import profile_dataset
@@ -42,9 +41,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset", required=True, help="Path to dataset file or directory")
     parser.add_argument("--prompt", action="append", help="Prompt to run (repeatable)")
     parser.add_argument("--out", default="output/session", help="Output directory")
-    parser.add_argument("--allow-clarify", action="store_true", help="Allow clarification questions")
-    parser.add_argument("--mode", default="heuristic", choices=["heuristic", "llm"], help="Agent mode")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="LLM model name for llm mode")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="LLM model name")
     return parser.parse_args()
 
 
@@ -74,9 +71,7 @@ def main() -> None:
     table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
     sketch = build_semantic_sketch(profiles)
 
-    initial_title = f"biosignal session - {dataset_path.name}"
-    if args.mode == "llm":
-        initial_title = "biosignal session"
+    initial_title = "biosignal session"
     recorder = NotebookRecorder(
         path=out_dir / "session.ipynb",
         title=initial_title,
@@ -92,73 +87,45 @@ def main() -> None:
         prompts = ["Give me an overview of the data."]
     logger.info("prompts: {}\n", len(prompts))
 
-    heuristic_agent = Agent(
-        con=con,
-        table_row_counts=table_row_counts,
-        sketch=sketch,
-        recorder=recorder,
-        out_dir=out_dir,
-        allow_clarify=args.allow_clarify,
-    )
+    if args.model.startswith(("eu.anthropic.", "us.anthropic.")):
+        if not (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")):
+            logger.warning("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.\n")
+    else:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise RuntimeError("ANTHROPIC_API_KEY is required for Anthropic API usage.")
+
+    llm_agent = build_llm_agent(args.model)
 
     results = []
     for idx, prompt in enumerate(prompts, start=1):
         logger.info("step {}: {}\n", idx, prompt)
-        if args.mode == "llm":
-            if args.model.startswith(("eu.anthropic.", "us.anthropic.")):
-                if not (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")):
-                    logger.warning("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.\n")
-            else:
-                if not os.environ.get("ANTHROPIC_API_KEY"):
-                    raise RuntimeError("ANTHROPIC_API_KEY is required for Anthropic API usage.")
+        deps = AgentDeps(
+            con=con,
+            sketch=sketch,
+            table_row_counts=table_row_counts,
+            recorder=recorder,
+            out_dir=out_dir,
+        )
 
-            llm_agent = build_llm_agent(args.model)
-            deps = AgentDeps(
-                con=con,
-                sketch=sketch,
-                table_row_counts=table_row_counts,
-                recorder=recorder,
-                out_dir=out_dir,
-            )
-
-            decision, _history = run_llm_loop(
-                llm_agent,
-                deps,
-                prompt,
-                ask_user=lambda q: questionary.text(q).ask() or "",
-            )
-            results.append(
-                {
-                    "prompt": prompt,
-                    "intent": "llm",
-                    "confidence": None,
-                    "sql": None,
-                    "description": None,
-                    "table": deps.outputs[-1]["table_path"] if deps.outputs else None,
-                    "plots": deps.outputs[-1]["plots"] if deps.outputs else [],
-                    "notes": ([decision.summary] if decision.summary else []),
-                    "clarification": decision.question,
-                }
-            )
-        else:
-            result = heuristic_agent.run(prompt, idx)
-            logger.info("sql: {}\n", result.sql)
-            logger.info("table: {}\n", result.table_path)
-            if result.plot_paths:
-                logger.info("plots: {}\n", ", ".join(str(p) for p in result.plot_paths))
-            results.append(
-                {
-                    "prompt": result.prompt,
-                    "intent": result.intent.type,
-                    "confidence": result.intent.confidence,
-                    "sql": result.sql,
-                    "description": result.description,
-                    "table": str(result.table_path),
-                    "plots": [str(p) for p in result.plot_paths],
-                    "notes": result.notes,
-                    "clarification": result.clarification,
-                }
-            )
+        decision, _history = run_llm_loop(
+            llm_agent,
+            deps,
+            prompt,
+            ask_user=lambda q: questionary.text(q).ask() or "",
+        )
+        results.append(
+            {
+                "prompt": prompt,
+                "intent": "llm",
+                "confidence": None,
+                "sql": None,
+                "description": None,
+                "table": deps.outputs[-1]["table_path"] if deps.outputs else None,
+                "plots": deps.outputs[-1]["plots"] if deps.outputs else [],
+                "notes": ([decision.summary] if decision.summary else []),
+                "clarification": decision.question,
+            }
+        )
 
     summary = {
         "dataset": str(dataset_path),

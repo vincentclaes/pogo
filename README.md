@@ -5,7 +5,7 @@ A dataset‑agnostic generative BI app for bioinformatics. Ask a question in pla
 **Command:**
 
 ```bash
-biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
+biosignal --model eu.anthropic.claude-opus-4-6-v1 \
   --dataset tests/fixtures/airway \
   --prompt "What are the top upregulated genes after dex treatment?" \
   --out output/session
@@ -61,6 +61,11 @@ Notebook + Markdown Export
 Basic usage:
 ```bash
 biosignal --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+
+Specify a model (Bedrock or Anthropic):
+```bash
+biosignal --model eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
 
 Interactive usage (asks for intent if no prompt provided):

@@ -25,8 +25,6 @@ def test_llm_generates_notebook(tmp_path: Path) -> None:
         sys.executable,
         "-m",
         "biosignal",
-        "--mode",
-        "llm",
         "--model",
         model,
         "--dataset",
