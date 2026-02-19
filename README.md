@@ -1,43 +1,51 @@
 # biosignal
 
-Dataset-agnostic generative BI app for bioinformatics.
+A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
 
-## What It Does (Visual)
+![biosignal demo](assets/biosignal-demo.gif)
+
+**What biosignal does**
+- Learns your dataset at runtime (no schema setup)
+- Turns intent into SQL and visuals
+- Writes a story‑driven notebook with explanations
+- Exports both `.ipynb` and `.md`
+
+**Why it feels different**
+- It doesn’t just answer — it **walks you through what it’s doing**
+- The notebook is **the product**: readable, shareable, reproducible
+
+## How It Works
 ```
 User Prompt
    |
    v
-Intent-First Agent
+LLM Agent
    |  (asks only if needed)
    v
-Runtime Data Profiling
-   |
-   v
-Semantic Sketch (columns, roles)
+Runtime Profiling + Semantic Sketch
    |
    v
 SQL Generation + Execution (DuckDB)
    |
    v
-Results: Table + Charts + Insights
+Tables + Charts + Story
    |
    v
-Notebook Export (sequential steps)
-```
-
-## Example Flow (CLI)
-```
-Upload/point to dataset
-  -> auto schema inference
-  -> user asks: "compare treated vs control"
-  -> SQL runs, table + 2 plots generated
-  -> session.ipynb written
+Notebook + Markdown Export
 ```
 
 ## Quickstart
 ```bash
 uv sync --dev
 biosignal --dataset tests/fixtures/airway --prompt "Give me an overview of the data." --out output/session
+```
+
+## Demo Command
+```bash
+biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
+  --dataset tests/fixtures/airway \
+  --prompt "What are the top upregulated genes after dex treatment?" \
+  --out output/session
 ```
 
 ## LLM Mode (Claude Opus 4.6)
@@ -52,6 +60,7 @@ biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
 
 If you use AWS Bedrock, ensure your AWS credentials are configured and keep the default model name.
 Set `AWS_REGION` or `AWS_DEFAULT_REGION` as needed for Bedrock access.
+
 ## CLI Guide
 Basic usage:
 ```bash
@@ -77,14 +86,14 @@ biosignal \
 
 Outputs written to `<output-dir>` (names derived from notebook title):
 - `<title>.ipynb` (sequential notebook)
-- `<title>.executed.ipynb` (papermill-executed notebook)
-- `<title>.md` (nbconvert markdown export)
-- `summary.json` (intent, SQL, notes)
+- `<title>.executed.ipynb` (papermill‑executed notebook)
+- `<title>.md` (markdown export with images)
+- `summary.json`
 - `tables/table_*.csv`
-- `plots/plot_*.png` (if matplotlib is available)
+- `plots/plot_*.png`
 
 Note: each run creates a new timestamped output folder based on `--out`.
-The notebook embeds plots directly (no need to re-run cells to see images).
+The notebook embeds plots directly (no need to re‑run cells to see images).
 
 ## Tests
 ```bash
