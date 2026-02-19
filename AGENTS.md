@@ -50,6 +50,11 @@ This profile feeds the semantic sketch used for intent mapping.
 - Notebook must be runnable and sequential.
  - CLI runs must write `session.ipynb` into the output directory.
 
+## Local CI (Required Before Commit)
+- Run `ci/setup.sh` once to install dependencies.
+- Run `ci/local_ci.sh` before committing.
+- Pre-commit hooks should run setup, lint, type checks, security checks, and tests.
+
 ## Test Dataset (Airway RNA-seq)
 Use the airway dataset as the end-to-end test harness. This is not special-cased in the code; it is only used to validate correctness.
 

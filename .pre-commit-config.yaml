@@ -1,0 +1,39 @@
+repos:
+  - repo: local
+    hooks:
+      - id: local-setup
+        name: local setup
+        entry: ci/setup.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: ruff
+        name: ruff lint
+        entry: uv run ruff check .
+        language: system
+        pass_filenames: false
+
+      - id: ty
+        name: ty type check
+        entry: uv run ty check
+        language: system
+        pass_filenames: false
+
+      - id: bandit
+        name: bandit security check
+        entry: uv run bandit -q -r app biosignal
+        language: system
+        pass_filenames: false
+
+      - id: pip-audit
+        name: pip-audit dependency check
+        entry: uv run pip-audit
+        language: system
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        pass_filenames: false

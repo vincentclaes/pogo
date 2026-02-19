@@ -25,6 +25,17 @@ biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
 - It doesn’t just answer — it **walks you through what it’s doing**
 - The notebook is **the product**: readable, shareable, reproducible
 
+## Setup (Required)
+```bash
+ci/setup.sh
+pre-commit install
+```
+
+## Local CI (Before Commit)
+```bash
+ci/local_ci.sh
+```
+
 ## How It Works
 ```
 User Prompt
