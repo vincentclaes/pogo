@@ -11,7 +11,7 @@ echo "[local-ci] type check (ty)"
 uvx ty check
 
 echo "[local-ci] security (bandit)"
-uv run bandit -q -r app biosignal -c ci/bandit.yaml
+uv run bandit -q -r app pogo -c ci/bandit.yaml
 
 echo "[local-ci] dependency audit (pip-audit)"
 uv run pip-audit

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from biosignal.notebook_builder import NotebookBuilder, NotebookRecorder
+from pogo.notebook_builder import NotebookBuilder, NotebookRecorder
 
 
 def test_header_inserts_sections(tmp_path: Path):

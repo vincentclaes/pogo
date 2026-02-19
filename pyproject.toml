@@ -1,5 +1,5 @@
 [project]
-name = "biosignal"
+name = "pogo"
 version = "0.1.0"
 description = "Dataset-agnostic generative BI app for bioinformatics"
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 license = "LicenseRef-Proprietary"
 keywords = ["bi", "bioinformatics", "duckdb", "llm"]
 authors = [
-  {name = "biosignal"}
+  {name = "pogo"}
 ]
 
 dependencies = [
@@ -36,14 +36,14 @@ dependencies = [
 ]
 
 [project.scripts]
-biosignal = "biosignal.cli:main"
+pogo = "pogo.cli:main"
 
 [build-system]
 requires = ["setuptools>=68.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["app", "biosignal"]
+packages = ["app", "pogo"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

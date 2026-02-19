@@ -11,7 +11,7 @@ import papermill as pm
 import questionary
 from loguru import logger
 
-from biosignal.notebook_builder import NotebookRecorder
+from pogo.notebook_builder import NotebookRecorder
 
 from .ingestion import load_dataset
 from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
@@ -21,11 +21,11 @@ from .semantic_sketch import build_semantic_sketch
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="biosignal: dataset-agnostic BI agent",
+        description="pogo: dataset-agnostic BI agent",
         epilog=(
             "Examples:\n"
-            "  biosignal --dataset data.csv --prompt \"Give me an overview\" --out output/session\n"
-            "  biosignal --dataset tests/fixtures/airway \\\n"
+            "  pogo --dataset data.csv --prompt \"Give me an overview\" --out output/session\n"
+            "  pogo --dataset tests/fixtures/airway \\\n"
             "    --prompt \"Compare treated vs control\" \\\n"
             "    --prompt \"Show counts for gene GENE_0001\" \\\n"
             "    --out output/session\n"
@@ -59,7 +59,7 @@ def main() -> None:
     out_dir = _new_run_dir(base_out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("biosignal: starting run\n")
+    logger.info("pogo: starting run\n")
     logger.info("dataset: {}\n", dataset_path)
     logger.info("output: {}\n", out_dir)
 
@@ -71,7 +71,7 @@ def main() -> None:
     table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
     sketch = build_semantic_sketch(profiles)
 
-    initial_title = "biosignal session"
+    initial_title = "pogo session"
     recorder = NotebookRecorder(
         path=out_dir / "session.ipynb",
         title=initial_title,
@@ -151,7 +151,7 @@ def main() -> None:
     from .nbexport import export_markdown_with_images
     export_markdown_with_images(executed_path, markdown_path)
     logger.info("markdown: {}\n", markdown_path)
-    logger.info("biosignal: done\n")
+    logger.info("pogo: done\n")
 
     # Clean up any stray notebooks from earlier runs in the same output folder.
     for candidate in out_dir.glob("*.ipynb"):

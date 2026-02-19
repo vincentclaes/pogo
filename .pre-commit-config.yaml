@@ -22,7 +22,7 @@ repos:
 
       - id: bandit
         name: bandit security check
-        entry: uv run bandit -q -r app biosignal -c ci/bandit.yaml
+        entry: uv run bandit -q -r app pogo -c ci/bandit.yaml
         language: system
         pass_filenames: false
 

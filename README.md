@@ -1,11 +1,11 @@
-# biosignal
+# pogo
 
 A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
 
 **Command:**
 
 ```bash
-biosignal --model eu.anthropic.claude-opus-4-6-v1 \
+pogo --model eu.anthropic.claude-opus-4-6-v1 \
   --dataset tests/fixtures/airway \
   --prompt "What are the top upregulated genes after dex treatment?" \
   --out output/session
@@ -13,9 +13,9 @@ biosignal --model eu.anthropic.claude-opus-4-6-v1 \
 
 **Output:**
 
-<img src="assets/biosignal-demo.gif" alt="biosignal demo" width="100%" />
+<img src="assets/pogo-demo.gif" alt="pogo demo" width="100%" />
 
-**What biosignal does**
+**What pogo does**
 - Learns your dataset at runtime (no schema setup)
 - Turns intent into SQL and visuals
 - Writes a story‑driven notebook with explanations
@@ -60,22 +60,22 @@ Notebook + Markdown Export
 ## CLI Guide
 Basic usage:
 ```bash
-biosignal --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
 
 Specify a model (Bedrock or Anthropic):
 ```bash
-biosignal --model eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+pogo --model eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
 
 Interactive usage (asks for intent if no prompt provided):
 ```bash
-biosignal --dataset <file-or-folder> --out <output-dir>
+pogo --dataset <file-or-folder> --out <output-dir>
 ```
 
 Multiple prompts (run sequentially):
 ```bash
-biosignal \
+pogo \
   --dataset tests/fixtures/airway \
   --prompt "What are the top upregulated genes after dex treatment?" \
   --prompt "Compare average expression between treated and control samples." \

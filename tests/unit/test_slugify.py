@@ -1,4 +1,4 @@
-from biosignal.notebook_builder import _slugify
+from pogo.notebook_builder import _slugify
 
 
 def test_slugify_basic():

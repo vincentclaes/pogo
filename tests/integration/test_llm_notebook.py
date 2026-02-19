@@ -11,20 +11,20 @@ import pytest
 
 @pytest.mark.integration
 def test_llm_generates_notebook(tmp_path: Path) -> None:
-    if not os.environ.get("BIOSIGNAL_INTEGRATION"):
-        pytest.skip("Set BIOSIGNAL_INTEGRATION=1 to run the real-model integration test.")
+    if not os.environ.get("POGO_INTEGRATION"):
+        pytest.skip("Set POGO_INTEGRATION=1 to run the real-model integration test.")
 
     repo_root = Path(__file__).resolve().parents[2]
     env_file = repo_root / ".env"
     dataset = repo_root / "tests" / "fixtures" / "airway"
     out_base = tmp_path / "session"
-    model = os.environ.get("BIOSIGNAL_MODEL", "eu.anthropic.claude-opus-4-6-v1")
+    model = os.environ.get("POGO_MODEL", "eu.anthropic.claude-opus-4-6-v1")
     prompt = "What are the top upregulated genes after dex treatment?"
 
     cmd = [
         sys.executable,
         "-m",
-        "biosignal",
+        "pogo",
         "--model",
         model,
         "--dataset",
