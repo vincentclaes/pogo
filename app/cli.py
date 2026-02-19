@@ -186,6 +186,15 @@ def main() -> None:
     logger.info("markdown: {}\n", markdown_path)
     logger.info("biosignal: done\n")
 
+    # Clean up any stray notebooks from earlier runs in the same output folder.
+    for candidate in out_dir.glob("*.ipynb"):
+        if candidate == notebook_path or candidate.name.endswith(".executed.ipynb"):
+            continue
+        stem = candidate.stem
+        candidate.unlink(missing_ok=True)
+        candidate.with_name(f"{stem}.executed.ipynb").unlink(missing_ok=True)
+        candidate.with_name(f"{stem}.md").unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     main()

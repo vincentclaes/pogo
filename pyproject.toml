@@ -48,6 +48,9 @@ packages = ["app", "biosignal"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+markers = [
+  "integration: requires a real LLM backend and credentials",
+]
 
 [tool.ruff]
 line-length = 100

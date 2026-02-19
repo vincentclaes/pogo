@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import shutil
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,16 +15,10 @@ def _matplotlib_available() -> bool:
         return False
 
 
-def test_airway_cli_end_to_end():
+def test_airway_cli_end_to_end(tmp_path: Path):
     repo_root = Path(__file__).resolve().parents[1]
     dataset_dir = repo_root / "tests" / "fixtures" / "airway"
-    base_out_dir = repo_root / "tmp" / "airway_e2e"
-
-    if base_out_dir.exists():
-        shutil.rmtree(base_out_dir)
-    for candidate in base_out_dir.parent.glob(f"{base_out_dir.name}_*"):
-        if candidate.is_dir():
-            shutil.rmtree(candidate)
+    base_out_dir = tmp_path / "airway_e2e"
 
     prompts = [
         "What are the top upregulated genes after dex treatment?",
@@ -46,7 +40,13 @@ def test_airway_cli_end_to_end():
     for prompt in prompts:
         cmd.extend(["--prompt", prompt])
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        env={**os.environ, "PYTHONPATH": str(repo_root)},
+    )
     assert result.returncode == 0, result.stderr
 
     run_dirs = sorted(
