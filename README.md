@@ -2,7 +2,14 @@
 
 A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
 
-![biosignal demo](assets/biosignal-demo.gif)
+```bash
+biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
+  --dataset tests/fixtures/airway \
+  --prompt "What are the top upregulated genes after dex treatment?" \
+  --out output/session
+```
+
+<img src="assets/biosignal-demo.gif" alt="biosignal demo" width="100%" />
 
 **What biosignal does**
 - Learns your dataset at runtime (no schema setup)
@@ -34,32 +41,6 @@ Tables + Charts + Story
 Notebook + Markdown Export
 ```
 
-## Quickstart
-```bash
-uv sync --dev
-biosignal --dataset tests/fixtures/airway --prompt "Give me an overview of the data." --out output/session
-```
-
-## Demo Command
-```bash
-biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
-  --dataset tests/fixtures/airway \
-  --prompt "What are the top upregulated genes after dex treatment?" \
-  --out output/session
-```
-
-## LLM Mode (Claude Opus 4.6)
-Set your Anthropic credentials and run with `--mode llm`:
-```bash
-export ANTHROPIC_API_KEY=...
-biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
-  --dataset tests/fixtures/airway \
-  --prompt "What are the top upregulated genes after dex treatment?" \
-  --out output/session
-```
-
-If you use AWS Bedrock, ensure your AWS credentials are configured and keep the default model name.
-Set `AWS_REGION` or `AWS_DEFAULT_REGION` as needed for Bedrock access.
 
 ## CLI Guide
 Basic usage:
@@ -94,8 +75,3 @@ Outputs written to `<output-dir>` (names derived from notebook title):
 
 Note: each run creates a new timestamped output folder based on `--out`.
 The notebook embeds plots directly (no need to re‑run cells to see images).
-
-## Tests
-```bash
-pytest tests/test_e2e_airway.py
-```
