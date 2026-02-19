@@ -2,6 +2,6 @@
 set -euo pipefail
 
 echo "[setup] installing dependencies"
-uv sync --dev
+uv sync --extra dev
 
 echo "[setup] done"

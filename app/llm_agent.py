@@ -1,24 +1,23 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 import duckdb
 import pandas as pd
 from loguru import logger
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
-import os
-
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
 
 from biosignal.notebook_builder import NotebookRecorder
+
 from .semantic_sketch import SemanticSketch
 from .viz import generate_plots
-
 
 DEFAULT_MODEL = "eu.anthropic.claude-opus-4-6-v1"
 
@@ -43,7 +42,7 @@ class AgentDecision(BaseModel):
     summary: Optional[str] = None
 
 
-def _build_model(model_name: str) -> AnthropicModel:
+def _build_model(model_name: str) -> AnthropicModel | BedrockConverseModel:
     if model_name.startswith(("eu.anthropic.", "us.anthropic.")):
         region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
         provider = BedrockProvider(region_name=region)
@@ -209,7 +208,7 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
         ctx.deps.header_written = True
         return "ok"
 
-    return agent
+    return cast(Agent[AgentDeps, AgentDecision], agent)
 
 
 def run_llm_loop(

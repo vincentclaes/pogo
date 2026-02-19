@@ -9,8 +9,9 @@ import pandas as pd
 from loguru import logger
 
 from biosignal.notebook_builder import NotebookRecorder
-from .intent import infer_intent, Intent
-from .sql_generator import generate_sql, QueryPlan
+
+from .intent import Intent, infer_intent
+from .sql_generator import QueryPlan, generate_sql
 from .viz import generate_plots
 
 

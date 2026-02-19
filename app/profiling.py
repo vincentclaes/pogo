@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import duckdb
 
@@ -48,21 +48,30 @@ def _quote(identifier: str) -> str:
 
 def _column_stats(con: duckdb.DuckDBPyConnection, table: str, col: str, dtype: str) -> ColumnProfile:
     qcol = _quote(col)
-    row_count = con.execute(f"select count(*) from {table}").fetchone()[0]
-    non_null = con.execute(f"select count({qcol}) from {table}").fetchone()[0]
-    distinct = con.execute(f"select count(distinct {qcol}) from {table}").fetchone()[0]
+    non_null_row = con.execute(f"select count({qcol}) from {table}").fetchone()
+    distinct_row = con.execute(
+        f"select count(distinct {qcol}) from {table}"
+    ).fetchone()
+    non_null = int(non_null_row[0]) if non_null_row else 0
+    distinct = int(distinct_row[0]) if distinct_row else 0
 
     profile = ColumnProfile(name=col, dtype=dtype, non_null=non_null, distinct=distinct)
 
     upper = dtype.upper()
     if upper in NUMERIC_TYPES:
-        row = con.execute(f"select min({qcol}), max({qcol}) from {table}").fetchone()
-        profile.min = row[0]
-        profile.max = row[1]
+        row = con.execute(
+            f"select min({qcol}), max({qcol}) from {table}"
+        ).fetchone()
+        if row:
+            profile.min = row[0]
+            profile.max = row[1]
     elif upper in DATETIME_TYPES:
-        row = con.execute(f"select min({qcol}), max({qcol}) from {table}").fetchone()
-        profile.min = row[0]
-        profile.max = row[1]
+        row = con.execute(
+            f"select min({qcol}), max({qcol}) from {table}"
+        ).fetchone()
+        if row:
+            profile.min = row[0]
+            profile.max = row[1]
     else:
         top_rows = con.execute(
             f"select {qcol}, count(*) as n from {table} group by {qcol} order by n desc limit 5"
@@ -75,7 +84,8 @@ def _column_stats(con: duckdb.DuckDBPyConnection, table: str, col: str, dtype: s
 def profile_dataset(con: duckdb.DuckDBPyConnection, tables: List[str]) -> Dict[str, TableProfile]:
     profiles: Dict[str, TableProfile] = {}
     for table in tables:
-        row_count = con.execute(f"select count(*) from {table}").fetchone()[0]
+        row = con.execute(f"select count(*) from {table}").fetchone()
+        row_count = int(row[0]) if row else 0
         columns_info = con.execute(f"pragma table_info('{table}')").fetchall()
         columns: Dict[str, ColumnProfile] = {}
         for _, name, dtype, *_ in columns_info:

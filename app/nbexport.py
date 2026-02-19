@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from typing import Tuple
 
-import nbconvert
+from nbconvert.exporters import MarkdownExporter
 
 
 def export_markdown_with_images(input_path: Path, output_path: Path) -> None:
-    exporter = nbconvert.MarkdownExporter()
+    exporter = MarkdownExporter()
     body, resources = exporter.from_filename(
         str(input_path),
         resources={"output_files_dir": "_md_images"},
@@ -36,7 +35,7 @@ def export_markdown_with_images(input_path: Path, output_path: Path) -> None:
             try:
                 target.write_bytes(data)
             except Exception:
-                continue
+                target.write_text(str(data))
 
     for name in attachments.keys():
         rel = Path(name)

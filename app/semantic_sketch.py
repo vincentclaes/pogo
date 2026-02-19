@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Set
 
-from .profiling import TableProfile, NUMERIC_TYPES, DATETIME_TYPES
+from .profiling import DATETIME_TYPES, NUMERIC_TYPES, TableProfile
 
 
 @dataclass

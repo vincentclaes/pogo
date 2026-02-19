@@ -19,7 +19,7 @@ def _q(identifier: str) -> str:
 
 
 def _find_primary_table(profiles: Dict[str, int]) -> str:
-    return max(profiles, key=profiles.get)
+    return max(profiles, key=lambda key: profiles[key])
 
 
 def _find_column_by_role(sketch: SemanticSketch, role_set: set, mentions: List[str]) -> str | None:
@@ -45,13 +45,15 @@ def _find_preferred_numeric(sketch: SemanticSketch, mentions: List[str]) -> str 
     return None
 
 
-def _find_de_table(sketch: SemanticSketch) -> Tuple[str | None, str | None, str | None]:
+def _find_de_table(sketch: SemanticSketch) -> Tuple[str, str, str] | None:
     for table, cols in sketch.tables.items():
         col_names = {c.lower(): c for c in cols.keys()}
         if "log2fc" in col_names and ("gene_id" in col_names or "gene" in col_names):
             gene_col = col_names.get("gene_id") or col_names.get("gene")
-            return table, gene_col, col_names["log2fc"]
-    return None, None, None
+            log2fc_col = col_names.get("log2fc")
+            if gene_col and log2fc_col:
+                return table, gene_col, log2fc_col
+    return None
 
 
 def _find_gene_column(sketch: SemanticSketch) -> str | None:
@@ -101,8 +103,9 @@ def generate_sql(intent: Intent, sketch: SemanticSketch, table_row_counts: Dict[
         return QueryPlan(sql=sql, description="Count by category", tables=[table])
 
     if intent.type == "differential":
-        de_table, gene_col, log2fc_col = _find_de_table(sketch)
-        if de_table:
+        de_info = _find_de_table(sketch)
+        if de_info:
+            de_table, gene_col, log2fc_col = de_info
             sql = (
                 f"select {_q(gene_col)} as gene, {_q(log2fc_col)} as log2fc "
                 f"from {_q(de_table)} order by log2fc desc limit 20"

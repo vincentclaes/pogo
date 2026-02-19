@@ -2,16 +2,16 @@
 set -euo pipefail
 
 echo "[local-ci] syncing dependencies"
-uv sync --dev
+uv sync --extra dev
 
 echo "[local-ci] lint (ruff)"
 uv run ruff check .
 
 echo "[local-ci] type check (ty)"
-uv run ty check
+uvx ty check
 
 echo "[local-ci] security (bandit)"
-uv run bandit -q -r app biosignal
+uv run bandit -q -r app biosignal -c ci/bandit.yaml
 
 echo "[local-ci] dependency audit (pip-audit)"
 uv run pip-audit

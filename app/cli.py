@@ -3,18 +3,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
-from datetime import datetime, timezone
 
-from loguru import logger
-import questionary
 import papermill as pm
+import questionary
+from loguru import logger
 
 from biosignal.notebook_builder import NotebookRecorder
+
 from .agent import Agent
 from .ingestion import load_dataset
-from .llm_agent import build_llm_agent, AgentDeps, run_llm_loop, DEFAULT_MODEL
+from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
 from .profiling import profile_dataset
 from .semantic_sketch import build_semantic_sketch
 

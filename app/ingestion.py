@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 
 import duckdb
 import pandas as pd
@@ -50,11 +50,15 @@ def _load_file(con: duckdb.DuckDBPyConnection, file_path: Path, table_name: str)
     elif ext == ".xlsx":
         df = pd.read_excel(file_path)
         con.register(f"{table_name}_df", df)
-        con.execute(f"create or replace table {table_name} as select * from {table_name}_df")
+        con.execute(
+            f"create or replace table {table_name} as select * from {table_name}_df"
+        )
     else:
         raise ValueError(f"Unsupported file type: {file_path}")
 
-    cols = [row[1] for row in con.execute(f"pragma table_info('{table_name}')").fetchall()]
+    cols = [
+        row[1] for row in con.execute(f"pragma table_info('{table_name}')").fetchall()
+    ]
     return TableInfo(name=table_name, source=str(file_path), columns=cols)
 
 

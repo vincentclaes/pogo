@@ -7,13 +7,13 @@ Design goals:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import base64
 import json
 import re
+import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
-import base64
-
+from typing import Any, Optional
 
 NBFORMAT = 4
 NBFORMAT_MINOR = 5
@@ -71,7 +71,14 @@ class NotebookBuilder:
     cells: list[dict[str, Any]] = field(default_factory=list)
 
     def add_markdown(self, text: str) -> None:
-        self.cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source(text)})
+        self.cells.append(
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": _to_source(text),
+                "id": uuid.uuid4().hex,
+            }
+        )
 
     def add_code(self, code: str, outputs: Optional[list[dict[str, Any]]] = None) -> None:
         self.cells.append(
@@ -81,6 +88,7 @@ class NotebookBuilder:
                 "metadata": {},
                 "outputs": outputs or [],
                 "source": _to_source(code),
+                "id": uuid.uuid4().hex,
             }
         )
 
@@ -95,7 +103,15 @@ class NotebookBuilder:
         if first.get("cell_type") == "markdown":
             first["source"] = _to_source(f"# {title}")
         else:
-            self.cells.insert(0, {"cell_type": "markdown", "metadata": {}, "source": _to_source(f"# {title}")})
+            self.cells.insert(
+                0,
+                {
+                    "cell_type": "markdown",
+                    "metadata": {},
+                    "source": _to_source(f"# {title}"),
+                    "id": uuid.uuid4().hex,
+                },
+            )
         self.title = title
 
     def add_section(self, title: str, body: Optional[str] = None) -> None:
@@ -119,16 +135,44 @@ class NotebookBuilder:
             self.set_title(title)
         self._remove_existing_header()
         header_cells = []
-        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("## TL;DR\n\n" + tldr)})
-        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("## Summary\n\n" + summary)})
+        header_cells.append(
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": _to_source("## TL;DR\n\n" + tldr),
+                "id": uuid.uuid4().hex,
+            }
+        )
+        header_cells.append(
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": _to_source("## Summary\n\n" + summary),
+                "id": uuid.uuid4().hex,
+            }
+        )
         prompts_lines = ["## Prompts Used"]
         for prompt, answer in prompts:
             prompts_lines.append(f"- {prompt} — {answer}")
-        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("\n".join(prompts_lines))})
+        header_cells.append(
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": _to_source("\n".join(prompts_lines)),
+                "id": uuid.uuid4().hex,
+            }
+        )
         steps_lines = ["## Steps to Run"]
         for idx, step in enumerate(steps, start=1):
             steps_lines.append(f"{idx}. {step}")
-        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("\n".join(steps_lines))})
+        header_cells.append(
+            {
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": _to_source("\n".join(steps_lines)),
+                "id": uuid.uuid4().hex,
+            }
+        )
 
         insert_at = 1 if self.cells else 0
         self.cells[insert_at:insert_at] = header_cells
@@ -236,6 +280,9 @@ class NotebookBuilder:
         self.add_markdown(text)
 
     def to_notebook(self) -> dict[str, Any]:
+        for cell in self.cells:
+            if "id" not in cell:
+                cell["id"] = uuid.uuid4().hex
         return {
             "cells": self.cells,
             "metadata": {
