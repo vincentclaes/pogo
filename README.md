@@ -12,12 +12,6 @@ biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
 ```
 
 **Output:**
-- `<title>.ipynb`
-- `<title>.executed.ipynb`
-- `<title>.md`
-- `summary.json`
-- `tables/table_*.csv`
-- `plots/plot_*.png`
 
 <img src="assets/biosignal-demo.gif" alt="biosignal demo" width="100%" />
 
