@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import duckdb
 import pandas as pd
 
-from notebook_builder import NotebookRecorder
+from biosignal.notebook_builder import NotebookRecorder
 from .intent import infer_intent, Intent
 from .sql_generator import generate_sql, QueryPlan
 from .viz import generate_plots

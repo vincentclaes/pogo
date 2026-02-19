@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import List
 
-from notebook_builder import NotebookRecorder
+from biosignal.notebook_builder import NotebookRecorder
 from .agent import Agent
 from .ingestion import load_dataset
 from .profiling import profile_dataset
