@@ -91,12 +91,12 @@ class Agent:
         if clarification:
             self.recorder.append_clarification(clarification)
         self.recorder.append_sql(plan.sql, description=plan.description, title="Reasoning")
-        self.recorder.append_result_preview(_df_preview(df))
         if plot_paths:
             for plot in plots:
                 self.recorder.append_image(
                     image_path=str(plot.path),
-                    caption=f"Chart type: {plot.chart_type}",
+                    title=f"Result Visualization ({plot.chart_type})" if len(plot_paths) > 1 else "Result Visualization",
+                    caption="This chart summarizes the query result so we can quickly spot patterns and differences.",
                 )
         if notes:
             self.recorder.append_note("\n".join(notes))

@@ -75,8 +75,10 @@ biosignal \
   --out output/session
 ```
 
-Outputs written to `<output-dir>`:
-- `session.ipynb` (sequential notebook)
+Outputs written to `<output-dir>` (names derived from notebook title):
+- `<title>.ipynb` (sequential notebook)
+- `<title>.executed.ipynb` (papermill-executed notebook)
+- `<title>.md` (nbconvert markdown export)
 - `summary.json` (intent, SQL, notes)
 - `tables/table_*.csv`
 - `plots/plot_*.png` (if matplotlib is available)

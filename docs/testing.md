@@ -13,7 +13,9 @@ python -m app.cli run --dataset <path> --prompt <text> --out <dir>
 
 Expected outputs (written to a new timestamped folder based on `<dir>`):
 - `<dir>_<timestamp>/summary.json`
-- `<dir>_<timestamp>/session.ipynb`
+- `<dir>_<timestamp>/<title>.ipynb`
+- `<dir>_<timestamp>/<title>.executed.ipynb`
+- `<dir>_<timestamp>/<title>.md`
 - `<dir>_<timestamp>/tables/table_1.csv`
 - `<dir>_<timestamp>/plots/plot_1.png`
 - `<dir>_<timestamp>/plots/plot_2.png`

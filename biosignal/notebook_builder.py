@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import re
 from pathlib import Path
 from typing import Any, Iterable, Optional
 import base64
@@ -86,10 +87,68 @@ class NotebookBuilder:
     def add_title_block(self) -> None:
         self.add_markdown(f"# {self.title}")
 
+    def set_title(self, title: str) -> None:
+        if not self.cells:
+            self.add_markdown(f"# {title}")
+            return
+        first = self.cells[0]
+        if first.get("cell_type") == "markdown":
+            first["source"] = _to_source(f"# {title}")
+        else:
+            self.cells.insert(0, {"cell_type": "markdown", "metadata": {}, "source": _to_source(f"# {title}")})
+        self.title = title
+
     def add_section(self, title: str, body: Optional[str] = None) -> None:
         self.add_markdown(f"## {title}")
         if body:
             self.add_markdown(body)
+
+    def add_story(self, title: str, body: str) -> None:
+        self.add_section(title)
+        self.add_markdown(body)
+
+    def add_header(
+        self,
+        tldr: str,
+        summary: str,
+        prompts: list[tuple[str, str]],
+        steps: list[str],
+        title: Optional[str] = None,
+    ) -> None:
+        if title:
+            self.set_title(title)
+        self._remove_existing_header()
+        header_cells = []
+        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("## TL;DR\n\n" + tldr)})
+        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("## Summary\n\n" + summary)})
+        prompts_lines = ["## Prompts Used"]
+        for prompt, answer in prompts:
+            prompts_lines.append(f"- {prompt} — {answer}")
+        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("\n".join(prompts_lines))})
+        steps_lines = ["## Steps to Run"]
+        for idx, step in enumerate(steps, start=1):
+            steps_lines.append(f"{idx}. {step}")
+        header_cells.append({"cell_type": "markdown", "metadata": {}, "source": _to_source("\n".join(steps_lines))})
+
+        insert_at = 1 if self.cells else 0
+        self.cells[insert_at:insert_at] = header_cells
+
+    def _remove_existing_header(self) -> None:
+        start = None
+        end = None
+        for idx, cell in enumerate(self.cells):
+            if cell.get("cell_type") != "markdown":
+                continue
+            text = "".join(cell.get("source", []))
+            if text.startswith("## TL;DR"):
+                start = idx
+            if text.startswith("## Steps to Run") and start is not None:
+                end = idx
+                break
+        if start is not None:
+            if end is None:
+                end = start
+            del self.cells[start : end + 1]
 
     def add_setup(self, dataset_path: str) -> None:
         self.add_section("Setup")
@@ -103,16 +162,7 @@ class NotebookBuilder:
         self.add_code(code)
 
     def add_intent(self, user_text: str, parsed_intent: str, confidence: Optional[float] = None) -> None:
-        score = "" if confidence is None else f" (confidence: {confidence:.2f})"
-        self.add_section("Intent")
-        self.add_markdown(
-            "\n".join(
-                [
-                    f"User request: {user_text}",
-                    f"Parsed intent: {parsed_intent}{score}",
-                ]
-            )
-        )
+        return
 
     def add_clarification(self, question: str) -> None:
         self.add_section("Clarification")
@@ -139,17 +189,22 @@ class NotebookBuilder:
         self.add_code(code)
 
     def add_result_preview(self, rows: list[dict[str, Any]], title: str = "Result Preview") -> None:
-        self.add_section(title)
-        self.add_markdown(_markdown_table(rows))
+        return
 
-    def add_visualization(self, code: str, description: Optional[str] = None) -> None:
-        self.add_section("What We See and Why")
+    def add_visualization(self, code: str, description: Optional[str] = None, title: Optional[str] = None) -> None:
+        self.add_section(title or "Visualization")
         if description:
             self.add_markdown(description)
         self.add_code(code)
 
-    def add_image(self, image_path: str, caption: Optional[str] = None, embed: bool = True) -> None:
-        self.add_section("What We See and Why")
+    def add_image(
+        self,
+        image_path: str,
+        title: Optional[str] = None,
+        caption: Optional[str] = None,
+        embed: bool = True,
+    ) -> None:
+        self.add_section(title or "Visualization")
         if caption:
             self.add_markdown(caption)
 
@@ -240,17 +295,60 @@ class NotebookRecorder:
         self.builder.write(self.path)
 
     def append_result_preview(self, rows: list[dict[str, Any]], title: str = "Result Preview") -> None:
-        self.builder.add_result_preview(rows, title=title)
+        return
+
+    def append_visualization(self, code: str, description: Optional[str] = None, title: Optional[str] = None) -> None:
+        self.builder.add_visualization(code, description=description, title=title)
         self.builder.write(self.path)
 
-    def append_visualization(self, code: str, description: Optional[str] = None) -> None:
-        self.builder.add_visualization(code, description=description)
+    def append_image(
+        self,
+        image_path: str,
+        title: Optional[str] = None,
+        caption: Optional[str] = None,
+        embed: bool = True,
+    ) -> None:
+        self.builder.add_image(image_path, title=title, caption=caption, embed=embed)
         self.builder.write(self.path)
 
-    def append_image(self, image_path: str, caption: Optional[str] = None, embed: bool = True) -> None:
-        self.builder.add_image(image_path, caption=caption, embed=embed)
+    def append_story(self, title: str, body: str) -> None:
+        self.builder.add_story(title, body)
         self.builder.write(self.path)
+
+    def append_header(
+        self,
+        tldr: str,
+        summary: str,
+        prompts: list[tuple[str, str]],
+        steps: list[str],
+        title: Optional[str] = None,
+    ) -> None:
+        self.builder.add_header(tldr, summary, prompts, steps, title=title)
+        self.builder.write(self.path)
+
+    def finalize_paths(self) -> Path:
+        slug = _slugify(self.builder.title or self.title)
+        if not slug:
+            slug = "session"
+        new_path = self.path.with_name(f"{slug}.ipynb")
+        if new_path != self.path and self.path.exists():
+            self.path.rename(new_path)
+            self.path = new_path
+        return self.path
 
     def append_note(self, text: str) -> None:
         self.builder.add_note(text)
         self.builder.write(self.path)
+
+
+def _slugify(value: str) -> str:
+    value = value.strip().lower()
+    # Treat any non-alphanumeric as a separator to ensure hyphenated words.
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    words = [w for w in value.split() if w]
+    words = words[:6]
+    slug = "-".join(words)
+    max_len = 48
+    if len(slug) > max_len:
+        slug = slug[:max_len].rstrip("-")
+    return slug

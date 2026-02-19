@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from loguru import logger
 import questionary
+import papermill as pm
 
 from biosignal.notebook_builder import NotebookRecorder
 from .agent import Agent
@@ -72,9 +73,12 @@ def main() -> None:
     table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
     sketch = build_semantic_sketch(profiles)
 
+    initial_title = f"biosignal session - {dataset_path.name}"
+    if args.mode == "llm":
+        initial_title = "biosignal session"
     recorder = NotebookRecorder(
         path=out_dir / "session.ipynb",
-        title=f"biosignal session - {dataset_path.name}",
+        title=initial_title,
         dataset_path=str(dataset_path.resolve()),
     )
 
@@ -161,8 +165,24 @@ def main() -> None:
         "results": results,
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    notebook_path = recorder.finalize_paths()
     logger.info("summary: {}\n", out_dir / "summary.json")
-    logger.info("notebook: {}\n", out_dir / "session.ipynb")
+    logger.info("notebook: {}\n", notebook_path)
+
+    executed_path = notebook_path.with_name(f"{notebook_path.stem}.executed.ipynb")
+    logger.info("executing notebook with papermill...\n")
+    pm.execute_notebook(
+        input_path=str(notebook_path),
+        output_path=str(executed_path),
+        kernel_name="python3",
+    )
+    logger.info("executed notebook: {}\n", executed_path)
+
+    markdown_path = notebook_path.with_name(f"{notebook_path.stem}.md")
+    logger.info("converting notebook to markdown...\n")
+    from .nbexport import export_markdown_with_images
+    export_markdown_with_images(executed_path, markdown_path)
+    logger.info("markdown: {}\n", markdown_path)
     logger.info("biosignal: done\n")
 
 

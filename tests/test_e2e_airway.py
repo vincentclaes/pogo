@@ -57,9 +57,15 @@ def test_airway_cli_end_to_end():
     out_dir = run_dirs[-1]
 
     summary_path = out_dir / "summary.json"
-    notebook_path = out_dir / "session.ipynb"
+    ipynb_files = [p for p in out_dir.glob("*.ipynb") if not p.name.endswith(".executed.ipynb")]
+    assert len(ipynb_files) == 1, "Expected a single base notebook"
+    notebook_path = ipynb_files[0]
+    executed_notebook = notebook_path.with_name(f"{notebook_path.stem}.executed.ipynb")
+    markdown_path = notebook_path.with_name(f"{notebook_path.stem}.md")
     assert summary_path.exists(), "summary.json was not created"
     assert notebook_path.exists(), "session.ipynb was not created"
+    assert executed_notebook.exists(), "session.executed.ipynb was not created"
+    assert markdown_path.exists(), "session.md was not created"
 
     data = json.loads(summary_path.read_text())
     assert len(data.get("results", [])) == len(prompts)
