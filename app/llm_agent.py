@@ -91,7 +91,7 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
         "useful tables and charts. Use tools to inspect schema and run SQL.\n"
         "Ask a clarifying question only if you cannot confidently map the request to columns.\n"
         "When you have produced results, respond with action='finish' and a short summary.\n"
-        "When calling run_sql, provide a short title and reasoning for the query.\n"
+        "When calling run_sql, you must provide a short title and reasoning for the query.\n"
         "If a visualization is produced, provide a brief 'what we see and why' caption.\n"
     )
 
@@ -118,8 +118,8 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
     def run_sql(
         ctx: RunContext[AgentDeps],
         sql: str,
-        reasoning_title: Optional[str] = None,
-        reasoning: Optional[str] = None,
+        reasoning_title: str,
+        reasoning: str,
         viz_caption: Optional[str] = None,
     ) -> Dict[str, object]:
         """Execute SQL and return a preview. Also writes notebook steps and plots."""
