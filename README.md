@@ -2,12 +2,22 @@
 
 A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
 
+**Command:**
+
 ```bash
 biosignal --mode llm --model eu.anthropic.claude-opus-4-6-v1 \
   --dataset tests/fixtures/airway \
   --prompt "What are the top upregulated genes after dex treatment?" \
   --out output/session
 ```
+
+**Output:**
+- `<title>.ipynb`
+- `<title>.executed.ipynb`
+- `<title>.md`
+- `summary.json`
+- `tables/table_*.csv`
+- `plots/plot_*.png`
 
 <img src="assets/biosignal-demo.gif" alt="biosignal demo" width="100%" />
 
