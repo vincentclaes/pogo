@@ -5,30 +5,31 @@
 - Validate that the system produces at least 1 table and 2 plots.
 - Ensure notebook export matches the session steps.
 
-## E2E CLI Contract (Planned)
+## E2E CLI Contract (Current)
 Command:
 ```
-python -m pogo.cli run --dataset <path> --prompt <text> --out <dir>
+python -m pogo --dataset <path> --prompt "<text>" --out <dir>
 ```
 
-Expected outputs (written to a new timestamped folder based on `<dir>`):
-- `<dir>_<timestamp>/summary.json`
-- `<dir>_<timestamp>/<title>.ipynb`
-- `<dir>_<timestamp>/<title>.executed.ipynb`
-- `<dir>_<timestamp>/<title>.md`
-- `<dir>_<timestamp>/tables/table_1.csv`
-- `<dir>_<timestamp>/plots/plot_1.png`
-- `<dir>_<timestamp>/plots/plot_2.png`
+Expected outputs (written to a new timestamped run directory based on `--out`):
+- If `--out output`, then `output/session_<timestamp>/...`
+- Otherwise `<dir>_<timestamp>/...`
+- `summary.json`
+- `session.json`
+- `session_<timestamp>.ipynb`
+- `session_<timestamp>.executed.ipynb`
+- `session_<timestamp>.md`
+- `tables/table_1.csv`
+- `plots/plot_1.png`
+- `plots/plot_2.png`
 
-If plotting libraries are unavailable, the CLI should log that plots are skipped and still write `summary.json` and `session.ipynb`.
+If plotting libraries are unavailable, the CLI should skip plot files and still write `summary.json` and the notebooks.
 
-## Summary Schema (Planned)
-`summary.json` should include:
-- `intent`: parsed intent and confidence
-- `sql`: executed SQL
-- `table_preview`: first 5–10 rows
-- `plots`: list of plot files and types
-- `notes`: generated insights
+## Summary Schema (Current)
+`summary.json` includes:
+- `dataset`: dataset path
+- `tables`: list of table names
+- `results`: list of steps with prompt, optional SQL metadata, table path, plots, and notes
 
 ## Airway Test Harness
 Prompts to run sequentially:
@@ -44,9 +45,10 @@ Assertions:
 - Notebook export contains all steps in order: intent, SQL, preview, chart.
 
 ## Suggested Test Implementation
-- `tests/test_e2e_airway.py` executes the CLI with the airway dataset.
+- `tests/integration/test_llm_notebook.py` executes the CLI with the airway dataset.
+- `tests/integration/test_resume_notebook.py` validates `--resume` appends a new notebook.
 - Assert output files exist and have non-empty content.
-- Optionally validate that `session.ipynb` includes expected cell headings.
+- Validate that the executed notebook includes the expected markdown sections and SQL cells.
 
 ## Future Extensions
 - Add regression tests with stored `summary.json` snapshots.

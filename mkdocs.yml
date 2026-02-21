@@ -8,11 +8,8 @@ docs_dir: docs
 use_directory_urls: false
 
 nav:
-  - Home: index.md
   - Introduction (Human): introduction_human.md
   - Introduction (Machine): introduction_machine.md
-  - Plan: plan.md
-  - Testing: testing.md
 
 theme:
   name: material

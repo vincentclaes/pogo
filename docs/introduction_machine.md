@@ -39,12 +39,16 @@ For each table and column, generate a compact profile:
 
 ## Output Artifacts
 Each run writes to a timestamped output directory based on `--out`:
-- `<title>.ipynb` (sequential notebook)
-- `<title>.executed.ipynb` (executed notebook)
-- `<title>.md` (markdown export)
+- If `--out output`, then `output/session_<timestamp>/...`
+- Otherwise `<out>_<timestamp>/...`
+- `session_<timestamp>.ipynb` (sequential notebook)
+- `session_<timestamp>.executed.ipynb` (executed notebook)
+- `session_<timestamp>.md` (markdown export)
+- `session.json` (dataset profile + semantic sketch + run history)
 - `summary.json`
 - `tables/table_*.csv`
 - `plots/plot_*.png`
+- `_md_images/` (only when markdown embeds images)
 
 ## CLI Contract (Current)
 ```

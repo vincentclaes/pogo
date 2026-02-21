@@ -11,8 +11,23 @@ from typing import List
 
 import papermill as pm
 import questionary
-from loguru import logger
 
+from .cli_ui import (
+    QUESTIONARY_STYLE,
+    answer,
+    banner,
+    clarify,
+    configure_output,
+    emit_event,
+    kv,
+    list_items,
+    output_paths,
+    question,
+    result_summary,
+    section,
+    status,
+    warn,
+)
 from pogo.notebook_builder import NotebookRecorder
 from pogo.session import (
     build_dataset_fingerprint,
@@ -42,10 +57,19 @@ def _parse_args() -> argparse.Namespace:
             "    --out output\n"
             "\n"
             "Outputs (written to a new timestamped folder based on --out):\n"
-            "  <out>/session.ipynb (sequential notebook)\n"
-            "  <out>/summary.json (intent, SQL, notes)\n"
-            "  <out>/tables/table_*.csv\n"
-            "  <out>/plots/plot_*.png (if matplotlib is available)\n"
+            "  If --out output: output/session_<timestamp>/...\n"
+            "  Otherwise: <out>_<timestamp>/...\n"
+            "  session_<timestamp>.ipynb (sequential notebook)\n"
+            "  session_<timestamp>.executed.ipynb\n"
+            "  session_<timestamp>.md\n"
+            "  session.json\n"
+            "  summary.json\n"
+            "  tables/table_*.csv\n"
+            "  plots/plot_*.png (if matplotlib is available)\n"
+            "\n"
+            "Automation:\n"
+            "  --json emits JSONL events to stdout\n"
+            "  --quiet suppresses non-error output\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -54,6 +78,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--out", default="output", help="Output directory")
     parser.add_argument("--resume", help="Resume from an existing output directory")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="LLM model name")
+    parser.add_argument("--quiet", action="store_true", help="Suppress non-error output")
+    parser.add_argument("--json", action="store_true", help="Emit JSONL events to stdout")
     return parser.parse_args()
 
 
@@ -96,25 +122,6 @@ def _normalize_prompt(prompt: str) -> str:
     return prompt
 
 
-def _print_step_summary(payload: dict) -> None:
-    sql = payload.get("sql")
-    reasoning_title = payload.get("reasoning_title")
-    reasoning = payload.get("reasoning")
-    rows = payload.get("rows") or []
-    row_count = payload.get("row_count")
-    if reasoning_title:
-        logger.info("what I did: {}\n", reasoning_title)
-    if reasoning:
-        logger.info("why: {}\n", reasoning)
-    if sql:
-        logger.info("sql: {}\n", sql)
-    if row_count is not None:
-        logger.info("rows returned: {}\n", row_count)
-    if rows:
-        preview = rows[:3]
-        logger.info("preview (first {} rows): {}\n", len(preview), preview)
-
-
 def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
     if not out_dir.exists():
         return 1
@@ -131,8 +138,9 @@ def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
 
 def main() -> None:
     args = _parse_args()
-    logger.remove()
-    logger.add(lambda msg: print(msg, end=""), level="INFO")
+    if args.quiet and args.json:
+        raise RuntimeError("Choose either --quiet or --json (not both).")
+    configure_output(quiet=args.quiet, json_mode=args.json)
     dataset_path = Path(args.dataset)
     base_out = Path(args.out)
     session_payload = None
@@ -148,13 +156,23 @@ def main() -> None:
         out_dir = _new_run_dir(base_out)
         session_path = out_dir / "session.json"
 
-    logger.info("pogo: starting run\n")
-    logger.info("dataset: {}\n", dataset_path)
-    logger.info("output: {}\n", out_dir.resolve())
+    banner()
+    section("Run")
+    kv("Dataset", str(dataset_path))
+    kv("Output", str(out_dir.resolve()))
+    emit_event(
+        "run_start",
+        dataset=str(dataset_path),
+        output=str(out_dir.resolve()),
+        model=args.model,
+        resumed=bool(args.resume),
+    )
 
-    con, tables = load_dataset(dataset_path)
+    with status("Loading dataset…"):
+        con, tables = load_dataset(dataset_path)
     table_names = [t.name for t in tables]
-    logger.info("tables: {}\n", ", ".join(table_names))
+    list_items("Tables", table_names)
+    emit_event("tables", tables=table_names)
 
     if session_payload:
         existing_runs = list(session_payload.get("runs", []))
@@ -167,7 +185,8 @@ def main() -> None:
         table_row_counts = table_row_counts_from_payload(session_payload)
         sketch = semantic_sketch_from_payload(session_payload)
         if not table_row_counts or not sketch.tables:
-            profiles = profile_dataset(con, table_names)
+            with status("Profiling dataset…"):
+                profiles = profile_dataset(con, table_names)
             table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
             sketch = build_semantic_sketch(profiles)
             session_payload = build_session_payload(dataset_path, tables, profiles, sketch, args.model)
@@ -181,7 +200,8 @@ def main() -> None:
             session_payload.setdefault("artifacts", {})
         write_session_payload(session_path, session_payload)
     else:
-        profiles = profile_dataset(con, table_names)
+        with status("Profiling dataset…"):
+            profiles = profile_dataset(con, table_names)
         table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
         sketch = build_semantic_sketch(profiles)
         session_payload = build_session_payload(dataset_path, tables, profiles, sketch, args.model)
@@ -210,16 +230,24 @@ def main() -> None:
     allow_chat = sys.stdin.isatty()
     if not prompts:
         if allow_chat:
-            prompt = questionary.text("What do you want to do with this data?").ask()
+            if args.json:
+                raise RuntimeError("--json requires explicit --prompt arguments.")
+            prompt = questionary.text(
+                "What do you want to do with this data?",
+                style=QUESTIONARY_STYLE,
+            ).ask()
             if prompt:
                 prompts = [prompt]
         if not prompts:
             prompts = ["Give me an overview of the data."]
-    logger.info("prompts: {}\n", len(prompts))
 
     if args.model.startswith(("eu.anthropic.", "us.anthropic.")):
         if not (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")):
-            logger.warning("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.\n")
+            emit_event(
+                "warning",
+                message="AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.",
+            )
+            warn("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.")
     else:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise RuntimeError("ANTHROPIC_API_KEY is required for Anthropic API usage.")
@@ -234,7 +262,8 @@ def main() -> None:
     def run_prompt_step(prompt: str, idx: int) -> None:
         nonlocal plot_counter, table_counter, results, session_payload
         prompt = _normalize_prompt(prompt)
-        logger.info("step {}: {}\n", idx, prompt)
+        question(idx, prompt)
+        emit_event("step_start", index=idx, prompt=prompt)
         deps = AgentDeps(
             con=con,
             sketch=sketch,
@@ -246,13 +275,39 @@ def main() -> None:
         )
 
         prior_conversation = list(session_payload.get("conversation", []))
-        decision, clarifications = run_llm_loop(
-            llm_agent,
-            deps,
-            prompt,
-            ask_user=lambda q: questionary.text(q).ask() or "",
-            history=prior_conversation,
-        )
+
+        def _ask_user(q: str) -> str:
+            emit_event("clarify_question", index=idx, question=q)
+            if args.json:
+                raise RuntimeError("Clarification required but --json is non-interactive.")
+            clarify(q)
+            response = questionary.text(q, style=QUESTIONARY_STYLE).ask() or ""
+            emit_event("clarify_response", index=idx, response=response)
+            return response
+
+        with status(f"Working on question {idx}…"):
+            decision, clarifications = run_llm_loop(
+                llm_agent,
+                deps,
+                prompt,
+                ask_user=_ask_user,
+                history=prior_conversation,
+            )
+        answer(decision.summary)
+        emit_event("step_answer", index=idx, summary=decision.summary)
+        if deps.outputs:
+            last = deps.outputs[-1]
+            row_count = last.get("row_count")
+            plot_paths = last.get("plots", [])
+            table_path = last.get("table_path")
+            result_summary(row_count, len(plot_paths), table_path)
+            emit_event(
+                "step_result",
+                index=idx,
+                row_count=row_count,
+                table_path=table_path,
+                plots=plot_paths,
+            )
         results.append(
             {
                 "prompt": prompt,
@@ -271,10 +326,6 @@ def main() -> None:
         session_payload["conversation"].extend(clarifications)
         if decision.summary:
             session_payload["conversation"].append(f"Assistant: {decision.summary}")
-        if deps.outputs:
-            _print_step_summary(deps.outputs[-1])
-        if decision.summary:
-            logger.info("what we learned: {}\n", decision.summary)
         plot_counter = deps.plot_counter
         table_counter = deps.table_counter
         session_payload["runs"] = results
@@ -284,10 +335,11 @@ def main() -> None:
         run_prompt_step(prompt, step_index)
         step_index += 1
 
-    if allow_chat:
+    if allow_chat and not args.json:
         while True:
             follow_up = questionary.text(
-                "Anything else you'd like to explore? (blank to finish)"
+                "Anything else you'd like to explore? (blank to finish)",
+                style=QUESTIONARY_STYLE,
             ).ask()
             if not follow_up:
                 break
@@ -301,8 +353,6 @@ def main() -> None:
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     notebook_path = recorder.finalize_paths()
-    logger.info("summary: {}\n", out_dir / "summary.json")
-    logger.info("notebook: {}\n", notebook_path)
 
     session_payload["artifacts"]["summary"] = str(out_dir / "summary.json")
     session_payload["artifacts"]["notebook"] = str(notebook_path)
@@ -313,22 +363,34 @@ def main() -> None:
     write_session_payload(session_path, session_payload)
 
     executed_path = notebook_path.with_name(f"{notebook_path.stem}.executed.ipynb")
-    logger.info("executing notebook with papermill...\n")
-    pm.execute_notebook(
-        input_path=str(notebook_path),
-        output_path=str(executed_path),
-        kernel_name="python3",
-    )
-    logger.info("executed notebook: {}\n", executed_path)
+    with status("Executing notebook with papermill…"):
+        pm.execute_notebook(
+            input_path=str(notebook_path),
+            output_path=str(executed_path),
+            kernel_name="python3",
+        )
     session_payload["artifacts"]["executed_notebook"] = str(executed_path)
     write_session_payload(session_path, session_payload)
 
     markdown_path = notebook_path.with_name(f"{notebook_path.stem}.md")
-    logger.info("converting notebook to markdown...\n")
-    from .nbexport import export_markdown_with_images
-    export_markdown_with_images(executed_path, markdown_path)
-    logger.info("markdown: {}\n", markdown_path)
-    logger.info("pogo: done\n")
+    with status("Converting notebook to markdown…"):
+        from .nbexport import export_markdown_with_images
+        export_markdown_with_images(executed_path, markdown_path)
+    output_paths(
+        out_dir=out_dir.resolve(),
+        notebook=notebook_path,
+        executed=executed_path,
+        markdown=markdown_path,
+        summary=out_dir / "summary.json",
+    )
+    emit_event(
+        "outputs",
+        run_dir=str(out_dir.resolve()),
+        notebook=str(notebook_path),
+        executed=str(executed_path),
+        markdown=str(markdown_path),
+        summary=str(out_dir / "summary.json"),
+    )
     session_payload["artifacts"]["markdown"] = str(markdown_path)
     write_session_payload(session_path, session_payload)
 
