@@ -6,5 +6,5 @@ Short summary:
 - Exports a reproducible notebook for every run.
 
 Links:
-- [Human page](human.md)
+- [Human page](README.md)
 - [Agent page](AGENTS.md)

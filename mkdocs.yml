@@ -9,7 +9,7 @@ use_directory_urls: false
 
 nav:
   - Introduction: introduction.md
-  - Human: human.md
+  - Human: README.md
   - Agents: AGENTS.md
 
 theme:
