@@ -8,7 +8,7 @@ A dataset‑agnostic generative BI app for bioinformatics. Ask a question in pla
 pogo --model eu.anthropic.claude-opus-4-6-v1 \
   --dataset tests/fixtures/airway \
   --prompt "What are the top upregulated genes after dex treatment?" \
-  --out output/session
+  --out output
 ```
 
 **Output:**
@@ -73,6 +73,11 @@ Interactive usage (asks for intent if no prompt provided):
 pogo --dataset <file-or-folder> --out <output-dir>
 ```
 
+Resume a prior session (continue the notebook and session log):
+```bash
+pogo --dataset <file-or-folder> --prompt "<question>" --resume <output-dir>
+```
+
 Multiple prompts (run sequentially):
 ```bash
 pogo \
@@ -82,16 +87,17 @@ pogo \
   --prompt "How many samples are treated vs control?" \
   --prompt "Show counts for gene GENE_0001 across samples." \
   --prompt "Give me an overview of the data." \
-  --out output/session
+  --out output
 ```
 
 Outputs written to `<output-dir>` (names derived from notebook title):
 - `<title>.ipynb` (sequential notebook)
 - `<title>.executed.ipynb` (papermill‑executed notebook)
 - `<title>.md` (markdown export with images)
+- `session.json` (dataset profile + semantic sketch + run history)
 - `summary.json`
 - `tables/table_*.csv`
 - `plots/plot_*.png`
 
-Note: each run creates a new timestamped output folder based on `--out`.
+Note: each run creates a new timestamped output folder based on `--out` unless `--resume` is used.
 The notebook embeds plots directly (no need to re‑run cells to see images).

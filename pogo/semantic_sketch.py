@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Set
 
@@ -14,6 +15,47 @@ class SemanticSketch:
     datetime_columns: Set[str]
     id_columns: Set[str]
     column_to_tables: Dict[str, List[str]]
+
+
+def _humanize(name: str) -> str:
+    parts = re.split(r"[_\s]+", name.strip())
+    parts = [p for p in parts if p]
+    return " ".join(parts) if parts else name
+
+
+def _describe_column(
+    name: str,
+    profile: TableProfile,
+    col_profile,
+    role: str,
+) -> str:
+    label = _humanize(name)
+    base = f"Text field for {label}."
+    if name.lower().endswith("_id") or (
+        col_profile.non_null > 0 and col_profile.distinct == col_profile.non_null
+    ):
+        base = f"Unique identifier for {label}."
+    elif role == "numeric":
+        base = f"Numeric measure of {label}."
+    elif role == "datetime":
+        base = f"Date or time for {label}."
+    elif role == "category":
+        base = f"Categorical label for {label}."
+
+    extras = []
+    missing = max(0, profile.row_count - col_profile.non_null)
+    if missing:
+        extras.append(f"{missing} missing")
+    if role in {"numeric", "datetime"} and col_profile.min is not None and col_profile.max is not None:
+        extras.append(f"range {col_profile.min} to {col_profile.max}")
+    if role in {"category", "text"} and col_profile.top_values:
+        top = [str(v) for v in col_profile.top_values if v is not None][:3]
+        if top:
+            extras.append("common values: " + ", ".join(top))
+
+    if extras:
+        return base + " " + "; ".join(extras) + "."
+    return base
 
 
 def build_semantic_sketch(profiles: Dict[str, TableProfile]) -> SemanticSketch:
@@ -44,11 +86,13 @@ def build_semantic_sketch(profiles: Dict[str, TableProfile]) -> SemanticSketch:
             if col_name.lower().endswith("_id") or col_profile.distinct == col_profile.non_null:
                 id_columns.add(col_name)
 
+            description = _describe_column(col_name, profile, col_profile, role)
             tables[table_name][col_name] = {
                 "dtype": col_profile.dtype,
                 "role": role,
                 "distinct": col_profile.distinct,
                 "non_null": col_profile.non_null,
+                "description": description,
             }
             column_to_tables.setdefault(col_name, []).append(table_name)
 

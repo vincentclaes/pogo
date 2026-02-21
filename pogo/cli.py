@@ -12,6 +12,15 @@ import questionary
 from loguru import logger
 
 from pogo.notebook_builder import NotebookRecorder
+from pogo.session import (
+    build_dataset_fingerprint,
+    build_session_payload,
+    fingerprints_match,
+    load_session_payload,
+    semantic_sketch_from_payload,
+    table_row_counts_from_payload,
+    write_session_payload,
+)
 
 from .ingestion import load_dataset
 from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
@@ -24,11 +33,11 @@ def _parse_args() -> argparse.Namespace:
         description="pogo: dataset-agnostic BI agent",
         epilog=(
             "Examples:\n"
-            "  pogo --dataset data.csv --prompt \"Give me an overview\" --out output/session\n"
+            "  pogo --dataset data.csv --prompt \"Give me an overview\" --out output\n"
             "  pogo --dataset tests/fixtures/airway \\\n"
             "    --prompt \"Compare treated vs control\" \\\n"
             "    --prompt \"Show counts for gene GENE_0001\" \\\n"
-            "    --out output/session\n"
+            "    --out output\n"
             "\n"
             "Outputs (written to a new timestamped folder based on --out):\n"
             "  <out>/session.ipynb (sequential notebook)\n"
@@ -40,14 +49,37 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dataset", required=True, help="Path to dataset file or directory")
     parser.add_argument("--prompt", action="append", help="Prompt to run (repeatable)")
-    parser.add_argument("--out", default="output/session", help="Output directory")
+    parser.add_argument("--out", default="output", help="Output directory")
+    parser.add_argument("--resume", help="Resume from an existing output directory")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="LLM model name")
     return parser.parse_args()
 
 
 def _new_run_dir(base: Path) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    return base.with_name(f"{base.name}_{stamp}")
+    if base.exists() and base.is_dir():
+        run_dir = base / f"session_{stamp}"
+    elif base.name == "output" and not base.suffix:
+        run_dir = base / f"session_{stamp}"
+    else:
+        run_dir = base.with_name(f"{base.name}_{stamp}")
+    run_dir.parent.mkdir(parents=True, exist_ok=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+
+def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
+    if not out_dir.exists():
+        return 1
+    max_index = 0
+    for candidate in out_dir.glob(f"{prefix}_*{suffix}"):
+        stem = candidate.stem
+        try:
+            idx = int(stem.split("_")[-1])
+        except ValueError:
+            continue
+        max_index = max(max_index, idx)
+    return max_index + 1
 
 
 def main() -> None:
@@ -56,8 +88,18 @@ def main() -> None:
     logger.add(lambda msg: print(msg, end=""), level="INFO")
     dataset_path = Path(args.dataset)
     base_out = Path(args.out)
-    out_dir = _new_run_dir(base_out)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    session_payload = None
+    if args.resume:
+        out_dir = Path(args.resume)
+        if not out_dir.exists():
+            raise FileNotFoundError(f"Resume directory not found: {out_dir}")
+        session_path = out_dir / "session.json"
+        if not session_path.exists():
+            raise FileNotFoundError(f"session.json not found in {out_dir}")
+        session_payload = load_session_payload(session_path)
+    else:
+        out_dir = _new_run_dir(base_out)
+        session_path = out_dir / "session.json"
 
     logger.info("pogo: starting run\n")
     logger.info("dataset: {}\n", dataset_path)
@@ -67,13 +109,46 @@ def main() -> None:
     table_names = [t.name for t in tables]
     logger.info("tables: {}\n", ", ".join(table_names))
 
-    profiles = profile_dataset(con, table_names)
-    table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
-    sketch = build_semantic_sketch(profiles)
+    if session_payload:
+        existing_runs = list(session_payload.get("runs", []))
+        stored_files = session_payload.get("dataset", {}).get("files", [])
+        current_files = build_dataset_fingerprint(tables)
+        if stored_files and not fingerprints_match(stored_files, current_files):
+            raise RuntimeError(
+                "Resume requested but dataset fingerprint does not match the stored session."
+            )
+        table_row_counts = table_row_counts_from_payload(session_payload)
+        sketch = semantic_sketch_from_payload(session_payload)
+        if not table_row_counts or not sketch.tables:
+            profiles = profile_dataset(con, table_names)
+            table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
+            sketch = build_semantic_sketch(profiles)
+            session_payload = build_session_payload(dataset_path, tables, profiles, sketch, args.model)
+            session_payload["runs"] = existing_runs
+        else:
+            session_payload["metadata"]["model"] = args.model
+            session_payload["dataset"]["path"] = str(dataset_path.resolve())
+            session_payload["dataset"]["files"] = current_files
+            session_payload["metadata"]["resumed_at"] = datetime.now(timezone.utc).isoformat()
+            session_payload.setdefault("artifacts", {})
+        write_session_payload(session_path, session_payload)
+    else:
+        profiles = profile_dataset(con, table_names)
+        table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
+        sketch = build_semantic_sketch(profiles)
+        session_payload = build_session_payload(dataset_path, tables, profiles, sketch, args.model)
+        write_session_payload(session_path, session_payload)
 
     initial_title = "pogo session"
+    notebook_path = session_payload.get("artifacts", {}).get("notebook") if session_payload else None
+    if notebook_path:
+        notebook_file = Path(notebook_path)
+        if not notebook_file.is_absolute():
+            notebook_file = out_dir / notebook_file
+    else:
+        notebook_file = out_dir / "session.ipynb"
     recorder = NotebookRecorder(
-        path=out_dir / "session.ipynb",
+        path=notebook_file,
         title=initial_title,
         dataset_path=str(dataset_path.resolve()),
     )
@@ -96,8 +171,10 @@ def main() -> None:
 
     llm_agent = build_llm_agent(args.model)
 
-    results = []
-    for idx, prompt in enumerate(prompts, start=1):
+    results = list(session_payload.get("runs", [])) if session_payload else []
+    plot_counter = _next_index(out_dir / "plots", "plot", ".png")
+    table_counter = _next_index(out_dir / "tables", "table", ".csv")
+    for idx, prompt in enumerate(prompts, start=len(results) + 1):
         logger.info("step {}: {}\n", idx, prompt)
         deps = AgentDeps(
             con=con,
@@ -105,6 +182,8 @@ def main() -> None:
             table_row_counts=table_row_counts,
             recorder=recorder,
             out_dir=out_dir,
+            plot_counter=plot_counter,
+            table_counter=table_counter,
         )
 
         decision, _history = run_llm_loop(
@@ -126,6 +205,10 @@ def main() -> None:
                 "clarification": decision.question,
             }
         )
+        plot_counter = deps.plot_counter
+        table_counter = deps.table_counter
+        session_payload["runs"] = results
+        write_session_payload(session_path, session_payload)
 
     summary = {
         "dataset": str(dataset_path),
@@ -137,6 +220,12 @@ def main() -> None:
     logger.info("summary: {}\n", out_dir / "summary.json")
     logger.info("notebook: {}\n", notebook_path)
 
+    session_payload["artifacts"] = {
+        "summary": str(out_dir / "summary.json"),
+        "notebook": str(notebook_path),
+    }
+    write_session_payload(session_path, session_payload)
+
     executed_path = notebook_path.with_name(f"{notebook_path.stem}.executed.ipynb")
     logger.info("executing notebook with papermill...\n")
     pm.execute_notebook(
@@ -145,6 +234,8 @@ def main() -> None:
         kernel_name="python3",
     )
     logger.info("executed notebook: {}\n", executed_path)
+    session_payload["artifacts"]["executed_notebook"] = str(executed_path)
+    write_session_payload(session_path, session_payload)
 
     markdown_path = notebook_path.with_name(f"{notebook_path.stem}.md")
     logger.info("converting notebook to markdown...\n")
@@ -152,6 +243,8 @@ def main() -> None:
     export_markdown_with_images(executed_path, markdown_path)
     logger.info("markdown: {}\n", markdown_path)
     logger.info("pogo: done\n")
+    session_payload["artifacts"]["markdown"] = str(markdown_path)
+    write_session_payload(session_path, session_payload)
 
     # Clean up any stray notebooks from earlier runs in the same output folder.
     for candidate in out_dir.glob("*.ipynb"):
