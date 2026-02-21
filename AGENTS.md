@@ -64,9 +64,6 @@ This profile feeds the semantic sketch used for intent mapping.
 - Run `ci/local_ci.sh` before committing.
 - Pre-commit hooks should run setup, lint, type checks, security checks, and tests.
 
-## Docs (Local Preview)
-- Run `ci/docs_serve.sh` to install Zensical dependencies and serve the docs locally.
-
 ## Working With The App (CLI)
 The CLI is exposed as `pogo` (installed via `ci/setup.sh`) and also works via `python -m pogo`.
 If `pogo` is not on your `PATH`, use `.venv/bin/pogo`.
