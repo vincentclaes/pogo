@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from types import SimpleNamespace
+from typing import Dict, List, Optional, Protocol, Tuple, cast
 
 import duckdb
 import pandas as pd
@@ -60,8 +61,12 @@ def _table_path(out_dir: Path, step_index: int) -> Path:
     return table_dir / f"table_{step_index}.csv"
 
 
+class _HasDeps(Protocol):
+    deps: AgentDeps
+
+
 def _record_sql_step(
-    ctx: RunContext[AgentDeps],
+    ctx: _HasDeps,
     sql: str,
     df: pd.DataFrame,
     reasoning_title: Optional[str] = None,
@@ -156,6 +161,11 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
             viz_caption,
         )
         payload = {
+            "sql": sql,
+            "reasoning_title": reasoning_title,
+            "reasoning": reasoning,
+            "viz_title": viz_title,
+            "viz_caption": viz_caption,
             "rows": _df_preview(df),
             "row_count": len(df),
             "table_path": str(table_path),
@@ -246,6 +256,42 @@ def run_llm_loop(
             )
             continue
 
+        if decision.action == "finish" and not deps.outputs:
+            primary = max(deps.table_row_counts, key=lambda key: deps.table_row_counts[key])
+            sql = f'SELECT * FROM "{primary}" LIMIT 20'
+            df = deps.con.execute(sql).df()
+            table_path = _table_path(deps.out_dir, deps.table_counter)
+            deps.table_counter += 1
+            df.to_csv(table_path, index=False)
+            plot_paths = _record_sql_step(
+                ctx=SimpleNamespace(deps=deps),
+                sql=sql,
+                df=df,
+                reasoning_title="Dataset Overview",
+                reasoning=(
+                    "You asked for guidance, so I started with a quick preview of the primary table "
+                    "to understand the columns and shape of the data."
+                ),
+                include_plots=True,
+                viz_title="Quick Preview",
+                viz_caption="A fast visual scan of the preview helps spot obvious patterns or outliers.",
+            )
+            deps.outputs.append(
+                {
+                    "sql": sql,
+                    "reasoning_title": "Dataset Overview",
+                    "reasoning": (
+                        "You asked for guidance, so I started with a quick preview of the primary table "
+                        "to understand the columns and shape of the data."
+                    ),
+                    "viz_title": "Quick Preview",
+                    "viz_caption": "A fast visual scan of the preview helps spot obvious patterns or outliers.",
+                    "rows": _df_preview(df),
+                    "row_count": len(df),
+                    "table_path": str(table_path),
+                    "plots": [str(p) for p in plot_paths],
+                }
+            )
         return decision, clarifications
 
     if not deps.story_written:
