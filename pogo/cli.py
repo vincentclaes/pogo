@@ -100,28 +100,6 @@ def _run_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
-def _normalize_prompt(prompt: str) -> str:
-    lowered = prompt.strip().lower()
-    vague = {
-        "not sure yet",
-        "not sure",
-        "unsure",
-        "what do you suggest",
-        "what do you suggest?",
-        "suggest",
-        "help",
-        "ideas",
-        "what can you do",
-        "what can you do?",
-    }
-    if lowered in vague:
-        return (
-            "Give me a short overview of the data, then suggest three concrete questions "
-            "I should ask next."
-        )
-    return prompt
-
-
 def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
     if not out_dir.exists():
         return 1
@@ -261,7 +239,6 @@ def main() -> None:
 
     def run_prompt_step(prompt: str, idx: int) -> None:
         nonlocal plot_counter, table_counter, results, session_payload
-        prompt = _normalize_prompt(prompt)
         question(idx, prompt)
         emit_event("step_start", index=idx, prompt=prompt)
         deps = AgentDeps(

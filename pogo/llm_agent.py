@@ -108,6 +108,7 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
         "Your job: answer the user's intent by exploring the dataset and producing\n"
         "useful tables and charts. Use tools to inspect schema and run SQL.\n"
         "Ask a clarifying question only if you cannot confidently map the request to columns.\n"
+        "If the user's intent is vague, provide a concise overview and suggest 2-3 concrete next questions.\n"
         "When you have produced results, respond with action='finish' and a short summary.\n"
         "Use probe_sql for quick checks that should NOT appear in the notebook.\n"
         "Use run_sql for steps that SHOULD appear in the notebook.\n"
