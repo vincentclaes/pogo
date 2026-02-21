@@ -2,6 +2,10 @@
 set -euo pipefail
 
 echo "[setup] installing dependencies"
-uv sync --extra dev
+extras=(--extra dev)
+if [[ "${WITH_DOCS:-0}" == "1" ]]; then
+  extras+=(--extra docs)
+fi
+uv sync "${extras[@]}"
 
 echo "[setup] done"

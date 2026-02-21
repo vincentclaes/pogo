@@ -13,7 +13,7 @@ pogo --model eu.anthropic.claude-opus-4-6-v1 \
 
 **Output:**
 
-<img src="assets/pogo-demo.gif" alt="pogo demo" width="100%" />
+![pogo demo](assets/pogo-demo.gif)
 
 **What pogo does**
 - Learns your dataset at runtime (no schema setup)
