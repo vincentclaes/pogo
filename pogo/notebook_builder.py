@@ -378,6 +378,8 @@ class NotebookRecorder:
         if not slug:
             slug = "session"
         new_path = self.path.with_name(f"{slug}.ipynb")
+        if new_path.exists() and new_path != self.path:
+            new_path = _unique_path(new_path)
         if new_path != self.path and self.path.exists():
             self.path.rename(new_path)
             self.path = new_path
@@ -399,3 +401,13 @@ def _slugify(value: str) -> str:
     if len(slug) > max_len:
         slug = slug[:max_len].rstrip("-")
     return slug
+
+
+def _unique_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+    for idx in range(2, 1000):
+        candidate = path.with_name(f"{path.stem}-{idx}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+    return path

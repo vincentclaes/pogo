@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
@@ -66,6 +67,10 @@ def _new_run_dir(base: Path) -> Path:
     run_dir.parent.mkdir(parents=True, exist_ok=True)
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
+
+
+def _run_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
 def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
@@ -141,17 +146,21 @@ def main() -> None:
 
     initial_title = "pogo session"
     notebook_path = session_payload.get("artifacts", {}).get("notebook") if session_payload else None
+    notebook_file = out_dir / f"session_{_run_stamp()}.ipynb"
     if notebook_path:
-        notebook_file = Path(notebook_path)
-        if not notebook_file.is_absolute():
-            notebook_file = out_dir / notebook_file
-    else:
-        notebook_file = out_dir / "session.ipynb"
+        previous = Path(notebook_path)
+        if not previous.is_absolute():
+            previous = out_dir / previous
+        if previous.exists():
+            shutil.copy(previous, notebook_file)
     recorder = NotebookRecorder(
         path=notebook_file,
         title=initial_title,
         dataset_path=str(dataset_path.resolve()),
     )
+    session_payload.setdefault("artifacts", {})
+    session_payload["artifacts"].setdefault("notebooks", [])
+    session_payload["artifacts"]["notebooks"].append(str(notebook_file))
 
     prompts: List[str] = args.prompt or []
     if not prompts:
@@ -186,11 +195,13 @@ def main() -> None:
             table_counter=table_counter,
         )
 
-        decision, _history = run_llm_loop(
+        prior_conversation = list(session_payload.get("conversation", []))
+        decision, clarifications = run_llm_loop(
             llm_agent,
             deps,
             prompt,
             ask_user=lambda q: questionary.text(q).ask() or "",
+            history=prior_conversation,
         )
         results.append(
             {
@@ -205,6 +216,11 @@ def main() -> None:
                 "clarification": decision.question,
             }
         )
+        session_payload.setdefault("conversation", [])
+        session_payload["conversation"].append(f"User: {prompt}")
+        session_payload["conversation"].extend(clarifications)
+        if decision.summary:
+            session_payload["conversation"].append(f"Assistant: {decision.summary}")
         plot_counter = deps.plot_counter
         table_counter = deps.table_counter
         session_payload["runs"] = results
@@ -220,10 +236,12 @@ def main() -> None:
     logger.info("summary: {}\n", out_dir / "summary.json")
     logger.info("notebook: {}\n", notebook_path)
 
-    session_payload["artifacts"] = {
-        "summary": str(out_dir / "summary.json"),
-        "notebook": str(notebook_path),
-    }
+    session_payload["artifacts"]["summary"] = str(out_dir / "summary.json")
+    session_payload["artifacts"]["notebook"] = str(notebook_path)
+    notebooks = session_payload["artifacts"].get("notebooks", [])
+    if notebooks:
+        notebooks[-1] = str(notebook_path)
+        session_payload["artifacts"]["notebooks"] = notebooks
     write_session_payload(session_path, session_payload)
 
     executed_path = notebook_path.with_name(f"{notebook_path.stem}.executed.ipynb")

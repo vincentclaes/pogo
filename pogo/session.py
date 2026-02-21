@@ -205,6 +205,7 @@ def build_session_payload(
         "profiles": _serialize_profiles(profiles, sketch),
         "semantic_sketch": _serialize_semantic_sketch(sketch),
         "semantic_layer": _build_semantic_layer(profiles, sketch),
+        "conversation": [],
         "runs": [],
         "artifacts": {},
     }

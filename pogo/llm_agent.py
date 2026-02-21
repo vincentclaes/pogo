@@ -216,21 +216,26 @@ def run_llm_loop(
     deps: AgentDeps,
     initial_prompt: str,
     ask_user,
+    history: Optional[List[str]] = None,
     max_steps: int = 6,
 ) -> Tuple[AgentDecision, List[str]]:
     conversation: List[str] = []
+    clarifications: List[str] = []
     user_input = initial_prompt
     deps.recorder.append_intent(initial_prompt, "llm", None)
 
     for _ in range(max_steps):
-        prompt = "\n".join(conversation + [f"User: {user_input}"])
+        history_block = history or []
+        prompt = "\n".join(history_block + conversation + [f"User: {user_input}"])
         result = agent.run_sync(prompt, deps=deps)
         decision = result.output
 
         if decision.action == "ask" and decision.question:
             conversation.append(f"Assistant: {decision.question}")
+            clarifications.append(f"Assistant: {decision.question}")
             user_input = ask_user(decision.question)
             conversation.append(f"User: {user_input}")
+            clarifications.append(f"User: {user_input}")
             continue
 
         if decision.action == "finish" and not deps.header_written:
@@ -241,7 +246,7 @@ def run_llm_loop(
             )
             continue
 
-        return decision, conversation
+        return decision, clarifications
 
     if not deps.story_written:
         deps.recorder.append_story(
@@ -256,4 +261,4 @@ def run_llm_loop(
             prompts=[("Prompt", "No short answer provided.")],
             steps=["Run pogo with your dataset and prompt."],
         )
-    return AgentDecision(action="finish", summary="Reached max steps."), conversation
+    return AgentDecision(action="finish", summary="Reached max steps."), clarifications

@@ -48,7 +48,13 @@ This profile feeds the semantic sketch used for intent mapping.
 - Every agent step becomes a notebook cell:
   - Intent, SQL, result preview, visualization code, notes/insights.
 - Notebook must be runnable and sequential.
- - CLI runs must write `session.ipynb` into the output directory.
+- Each run writes a **new** notebook file and appends new steps onto the previous notebook’s content (resume behavior).
+- Preserve prior notebooks for reproducibility; never overwrite them.
+- CLI runs must write a notebook into the output directory and record its path in `session.json`.
+
+## Session Persistence
+- Persist `session.json` with dataset fingerprints, profiles, semantic sketch, semantic layer, and conversation history.
+- Resume must validate dataset fingerprints before appending.
 
 ## Local CI (Required Before Commit)
 - Run `ci/setup.sh` once to install dependencies.
