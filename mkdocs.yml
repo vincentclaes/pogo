@@ -8,8 +8,9 @@ docs_dir: docs
 use_directory_urls: false
 
 nav:
-  - Introduction (Human): introduction_human.md
-  - Introduction (Machine): introduction_machine.md
+  - Introduction: introduction.md
+  - Human: human.md
+  - Agents: AGENTS.md
 
 theme:
   name: material

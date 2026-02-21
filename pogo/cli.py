@@ -12,6 +12,17 @@ from typing import List
 import papermill as pm
 import questionary
 
+from pogo.notebook_builder import NotebookRecorder
+from pogo.session import (
+    build_dataset_fingerprint,
+    build_session_payload,
+    fingerprints_match,
+    load_session_payload,
+    semantic_sketch_from_payload,
+    table_row_counts_from_payload,
+    write_session_payload,
+)
+
 from .cli_ui import (
     QUESTIONARY_STYLE,
     answer,
@@ -28,17 +39,6 @@ from .cli_ui import (
     status,
     warn,
 )
-from pogo.notebook_builder import NotebookRecorder
-from pogo.session import (
-    build_dataset_fingerprint,
-    build_session_payload,
-    fingerprints_match,
-    load_session_payload,
-    semantic_sketch_from_payload,
-    table_row_counts_from_payload,
-    write_session_payload,
-)
-
 from .ingestion import load_dataset
 from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
 from .profiling import profile_dataset
@@ -297,9 +297,12 @@ def main() -> None:
         emit_event("step_answer", index=idx, summary=decision.summary)
         if deps.outputs:
             last = deps.outputs[-1]
-            row_count = last.get("row_count")
-            plot_paths = last.get("plots", [])
-            table_path = last.get("table_path")
+            row_count_raw = last.get("row_count")
+            row_count = row_count_raw if isinstance(row_count_raw, int) else None
+            plot_paths_raw = last.get("plots", [])
+            plot_paths = plot_paths_raw if isinstance(plot_paths_raw, list) else []
+            table_path_raw = last.get("table_path")
+            table_path = table_path_raw if isinstance(table_path_raw, str) else None
             result_summary(row_count, len(plot_paths), table_path)
             emit_event(
                 "step_result",

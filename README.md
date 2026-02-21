@@ -1,6 +1,6 @@
 # pogo
 
-**Human:** This README is the human-facing overview and usage guide.
+**Human page:** This README is the human-facing overview and usage guide.
 
 A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
 
