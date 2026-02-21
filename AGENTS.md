@@ -1,5 +1,7 @@
 # Agents Guide
 
+**Agents:** This file is the machine-facing operating guide for agents.
+
 ## Purpose
 Build **pogo**, a dataset-agnostic generative BI app for non-technical biologists. The app must learn dataset structure at runtime, answer user intents with SQL + visualization, and export the full conversation as a sequential Jupyter notebook.
 
