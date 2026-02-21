@@ -4,11 +4,11 @@ site_url: https://vincentclaes.github.io/pogo/
 repo_url: https://github.com/vincentclaes/pogo
 repo_name: vincentclaes/pogo
 
-docs_dir: docs
+docs_dir: .
 use_directory_urls: false
 
 nav:
-  - Introduction: introduction.md
+  - Introduction: docs/introduction.md
   - Human: README.md
   - Agents: AGENTS.md
 
