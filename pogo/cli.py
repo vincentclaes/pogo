@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
@@ -108,7 +109,7 @@ def main() -> None:
 
     logger.info("pogo: starting run\n")
     logger.info("dataset: {}\n", dataset_path)
-    logger.info("output: {}\n", out_dir)
+    logger.info("output: {}\n", out_dir.resolve())
 
     con, tables = load_dataset(dataset_path)
     table_names = [t.name for t in tables]
@@ -132,6 +133,7 @@ def main() -> None:
             session_payload["runs"] = existing_runs
         else:
             session_payload["metadata"]["model"] = args.model
+            session_payload["metadata"]["output_dir"] = str(out_dir.resolve())
             session_payload["dataset"]["path"] = str(dataset_path.resolve())
             session_payload["dataset"]["files"] = current_files
             session_payload["metadata"]["resumed_at"] = datetime.now(timezone.utc).isoformat()
@@ -142,6 +144,7 @@ def main() -> None:
         table_row_counts = {name: profile.row_count for name, profile in profiles.items()}
         sketch = build_semantic_sketch(profiles)
         session_payload = build_session_payload(dataset_path, tables, profiles, sketch, args.model)
+        session_payload["metadata"]["output_dir"] = str(out_dir.resolve())
         write_session_payload(session_path, session_payload)
 
     initial_title = "pogo session"
@@ -163,14 +166,14 @@ def main() -> None:
     session_payload["artifacts"]["notebooks"].append(str(notebook_file))
 
     prompts: List[str] = args.prompt or []
-    interactive = False
+    allow_chat = sys.stdin.isatty()
     if not prompts:
-        interactive = True
-        prompt = questionary.text("What do you want to do with this data?").ask()
-        if prompt:
-            prompts = [prompt]
-    if not prompts:
-        prompts = ["Give me an overview of the data."]
+        if allow_chat:
+            prompt = questionary.text("What do you want to do with this data?").ask()
+            if prompt:
+                prompts = [prompt]
+        if not prompts:
+            prompts = ["Give me an overview of the data."]
     logger.info("prompts: {}\n", len(prompts))
 
     if args.model.startswith(("eu.anthropic.", "us.anthropic.")):
@@ -231,20 +234,18 @@ def main() -> None:
         session_payload["runs"] = results
         write_session_payload(session_path, session_payload)
 
-    if interactive:
-        current_prompt = prompts[0]
+    for prompt in prompts:
+        run_prompt_step(prompt, step_index)
+        step_index += 1
+
+    if allow_chat:
         while True:
-            run_prompt_step(current_prompt, step_index)
-            step_index += 1
             follow_up = questionary.text(
                 "Anything else you'd like to explore? (blank to finish)"
             ).ask()
             if not follow_up:
                 break
-            current_prompt = follow_up
-    else:
-        for prompt in prompts:
-            run_prompt_step(prompt, step_index)
+            run_prompt_step(follow_up, step_index)
             step_index += 1
 
     summary = {
