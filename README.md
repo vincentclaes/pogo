@@ -31,6 +31,19 @@ ci/setup.sh
 pre-commit install
 ```
 
+## LLM Credentials (Required for Runs)
+Anthropic API:
+```bash
+export ANTHROPIC_API_KEY="..."
+```
+
+Bedrock (if using a `eu.anthropic.*` or `us.anthropic.*` model):
+- Configure AWS credentials (env vars or `~/.aws/credentials`).
+- Set a region:
+```bash
+export AWS_REGION="us-east-1"
+```
+
 ## Local CI (Before Commit)
 ```bash
 ci/local_ci.sh
@@ -78,6 +91,16 @@ Resume a prior session (continue the notebook and session log):
 pogo --dataset <file-or-folder> --prompt "<question>" --resume <output-dir>
 ```
 
+Machine-readable output (JSONL events):
+```bash
+pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir> --json
+```
+
+Quiet mode (suppress non-error output):
+```bash
+pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir> --quiet
+```
+
 Multiple prompts (run sequentially):
 ```bash
 pogo \
@@ -90,14 +113,18 @@ pogo \
   --out output
 ```
 
-Outputs written to `<output-dir>` (names derived from notebook title):
-- `<title>.ipynb` (sequential notebook)
-- `<title>.executed.ipynb` (papermill‑executed notebook)
-- `<title>.md` (markdown export with images)
+Outputs written to a timestamped run directory based on `--out`:
+- Run outputs are written to a timestamped run directory:
+  - If `--out output`, then `output/session_<timestamp>/...`
+  - Otherwise `<out>_<timestamp>/...`
+- `session_<timestamp>.ipynb` (sequential notebook)
+- `session_<timestamp>.executed.ipynb` (papermill‑executed notebook)
+- `session_<timestamp>.md` (markdown export with images)
 - `session.json` (dataset profile + semantic sketch + run history)
 - `summary.json`
 - `tables/table_*.csv`
 - `plots/plot_*.png`
+- `_md_images/` (only when markdown embeds images)
 
 Note: each run creates a new timestamped output folder based on `--out` unless `--resume` is used.
 The notebook embeds plots directly (no need to re‑run cells to see images).

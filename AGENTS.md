@@ -65,6 +65,35 @@ This profile feeds the semantic sketch used for intent mapping.
 ## Docs (Local Preview)
 - Run `ci/docs_serve.sh` to install Zensical dependencies and serve the docs locally.
 
+## Working With The App (CLI)
+The CLI is exposed as `pogo` (installed via `ci/setup.sh`) and also works via `python -m pogo`.
+If `pogo` is not on your `PATH`, use `.venv/bin/pogo`.
+
+### Credentials
+- For Bedrock-backed models (e.g. `eu.anthropic.*`), use an AWS profile and region:
+  - `export AWS_PROFILE=vincent`
+  - `export AWS_REGION=us-east-1`
+- For Anthropic API, set `export ANTHROPIC_API_KEY="..."`.
+
+### Common Commands
+- One-shot question:
+  - `pogo --dataset tests/fixtures/airway --prompt "Give me an overview of the data." --out output`
+- Multiple prompts in a single run:
+  - Repeat `--prompt` for each question.
+- Interactive (asks for intent if no prompt provided):
+  - `pogo --dataset tests/fixtures/airway --out output`
+- Resume a prior session (append to notebook + session log):
+  - `pogo --dataset tests/fixtures/airway --prompt "Next question" --resume output/session_<timestamp>`
+- JSONL events for automation:
+  - `pogo --dataset tests/fixtures/airway --prompt "Give me an overview of the data." --out output --json`
+- Quiet mode:
+  - `pogo --dataset tests/fixtures/airway --prompt "Give me an overview of the data." --out output --quiet`
+
+### Output Location
+Each run writes to a timestamped folder based on `--out`:
+- If `--out output`, then `output/session_<timestamp>/...`
+- Otherwise `<out>_<timestamp>/...`
+
 ## Test Dataset (Airway RNA-seq)
 Use the airway dataset as the end-to-end test harness. This is not special-cased in the code; it is only used to validate correctness.
 

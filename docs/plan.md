@@ -74,11 +74,15 @@ Build a lightweight generative BI app that:
 
 ### Phase 4 - CLI + Test Harness
 1. **CLI runner**
-- `python -m pogo.cli run --dataset <path> --prompt <text> --out <dir>`
+- `python -m pogo --dataset <path> --prompt "<text>" --out <dir>`
 - Outputs:
-  - `session.ipynb` (sequential notebook)
-  - `summary.json` (intent, SQL, stats)
-  - `plots/plot_1.png`, `plots/plot_2.png` (if available)
+  - `session_<timestamp>.ipynb` (sequential notebook)
+  - `session_<timestamp>.executed.ipynb`
+  - `session_<timestamp>.md`
+  - `session.json` (dataset profile + semantic sketch + run history)
+  - `summary.json` (run summary)
+  - `plots/plot_*.png` (if available)
+  - `tables/table_*.csv`
 
 2. **E2E tests**
 - Use airway dataset as a test harness.

@@ -2686,6 +2686,7 @@ dependencies = [
     { name = "papermill" },
     { name = "pydantic-ai-slim", extra = ["anthropic", "bedrock"] },
     { name = "questionary" },
+    { name = "rich" },
 ]
 
 [package.optional-dependencies]
@@ -2719,6 +2720,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "bedrock"], specifier = ">=0.0.14" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
     { name = "questionary", specifier = ">=2.0.1" },
+    { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.1" },
     { name = "zensical", marker = "extra == 'docs'", specifier = ">=0.0.23,<0.1" },

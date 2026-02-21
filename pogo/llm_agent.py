@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, cast
 
@@ -29,6 +30,7 @@ class AgentDeps:
     table_row_counts: Dict[str, int]
     recorder: NotebookRecorder
     out_dir: Path
+    con_lock: threading.Lock = field(default_factory=threading.Lock)
     plot_counter: int = 1
     table_counter: int = 1
     outputs: List[Dict[str, object]] = field(default_factory=list)
@@ -141,7 +143,8 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
     ) -> Dict[str, object]:
         """Execute SQL and return a preview. Also writes notebook steps and plots."""
         logger.info("llm sql: {}", sql)
-        df = ctx.deps.con.execute(sql).df()
+        with ctx.deps.con_lock:
+            df = ctx.deps.con.execute(sql).df()
         table_path = _table_path(ctx.deps.out_dir, ctx.deps.table_counter)
         ctx.deps.table_counter += 1
         df.to_csv(table_path, index=False)
@@ -168,7 +171,8 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
     def probe_sql(ctx: RunContext[AgentDeps], sql: str, limit: int = 10) -> Dict[str, object]:
         """Run a quick exploratory SQL query without logging to the notebook."""
         logger.info("llm probe sql: {}", sql)
-        df = ctx.deps.con.execute(sql).df()
+        with ctx.deps.con_lock:
+            df = ctx.deps.con.execute(sql).df()
         return {
             "rows": _df_preview(df, limit=limit),
             "row_count": len(df),
