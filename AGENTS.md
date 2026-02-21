@@ -37,6 +37,7 @@ This profile feeds the semantic sketch used for intent mapping.
 4. **Execute query** in DuckDB.
 5. **Summarize** results and provide a visualization.
 6. **Confirm**: "Is this what you wanted?" If no, refine.
+7. **Follow-ups**: Allow the user to ask additional questions in the same run and append to the notebook.
 
 ## LLM Responsibilities (Required)
 - Provide a **short title** for each query step.

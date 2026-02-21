@@ -163,7 +163,9 @@ def main() -> None:
     session_payload["artifacts"]["notebooks"].append(str(notebook_file))
 
     prompts: List[str] = args.prompt or []
+    interactive = False
     if not prompts:
+        interactive = True
         prompt = questionary.text("What do you want to do with this data?").ask()
         if prompt:
             prompts = [prompt]
@@ -183,7 +185,10 @@ def main() -> None:
     results = list(session_payload.get("runs", [])) if session_payload else []
     plot_counter = _next_index(out_dir / "plots", "plot", ".png")
     table_counter = _next_index(out_dir / "tables", "table", ".csv")
-    for idx, prompt in enumerate(prompts, start=len(results) + 1):
+    step_index = len(results) + 1
+
+    def run_prompt_step(prompt: str, idx: int) -> None:
+        nonlocal plot_counter, table_counter, results, session_payload
         logger.info("step {}: {}\n", idx, prompt)
         deps = AgentDeps(
             con=con,
@@ -225,6 +230,22 @@ def main() -> None:
         table_counter = deps.table_counter
         session_payload["runs"] = results
         write_session_payload(session_path, session_payload)
+
+    if interactive:
+        current_prompt = prompts[0]
+        while True:
+            run_prompt_step(current_prompt, step_index)
+            step_index += 1
+            follow_up = questionary.text(
+                "Anything else you'd like to explore? (blank to finish)"
+            ).ask()
+            if not follow_up:
+                break
+            current_prompt = follow_up
+    else:
+        for prompt in prompts:
+            run_prompt_step(prompt, step_index)
+            step_index += 1
 
     summary = {
         "dataset": str(dataset_path),
