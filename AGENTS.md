@@ -62,6 +62,9 @@ This profile feeds the semantic sketch used for intent mapping.
 - Run `ci/local_ci.sh` before committing.
 - Pre-commit hooks should run setup, lint, type checks, security checks, and tests.
 
+## Docs (Local Preview)
+- Run `ci/docs_serve.sh` to install Zensical dependencies and serve the docs locally.
+
 ## Test Dataset (Airway RNA-seq)
 Use the airway dataset as the end-to-end test harness. This is not special-cased in the code; it is only used to validate correctness.
 
