@@ -1,16 +1,13 @@
-# pogo
+# POGO
 
-**Human page:** This README is the human-facing overview and usage guide.
-
-A dataset‑agnostic generative BI app for bioinformatics. Ask a question in plain English, get a clean narrative with tables, charts, and a reproducible notebook.
+A dataset exploration tool that generates a notebook in a conversational way. Ask a question in plain English, get SQL, tables, charts, and a reproducible notebook.
 
 **Command:**
 
 ```bash
-pogo --model eu.anthropic.claude-opus-4-6-v1 \
-  --dataset tests/fixtures/airway \
-  --prompt "What are the top upregulated genes after dex treatment?" \
-  --out output
+# point to your dataset and start chatting
+pogo --dataset tests/fixtures/airway
+  > "What are the top upregulated genes after dex treatment?"
 ```
 
 **Output:**
@@ -18,45 +15,32 @@ pogo --model eu.anthropic.claude-opus-4-6-v1 \
 ![pogo demo](assets/pogo-demo.gif)
 
 **What pogo does**
+
 - Learns your dataset at runtime (no schema setup)
 - Turns intent into SQL and visuals
 - Writes a story‑driven notebook with explanations
 - Exports both `.ipynb` and `.md`
 
 **Why it feels different**
+
 - It doesn’t just answer — it **walks you through what it’s doing**
 - The notebook is **the product**: readable, shareable, reproducible
 
 ## Setup (Required)
+
 ```bash
 ci/setup.sh
 pre-commit install
 ```
 
-## LLM Credentials (Required for Runs)
-OpenAI API:
-```bash
-export OPENAI_API_KEY="..."
-```
-
-Anthropic API:
-```bash
-export ANTHROPIC_API_KEY="..."
-```
-
-Bedrock (if using a `eu.anthropic.*` or `us.anthropic.*` model):
-- Configure AWS credentials (env vars or `~/.aws/credentials`).
-- Set a region:
-```bash
-export AWS_REGION="us-east-1"
-```
-
 ## Local CI (Before Commit)
+
 ```bash
 ci/local_ci.sh
 ```
 
 ## How It Works
+
 ```
 User Prompt
    |
@@ -76,75 +60,118 @@ Tables + Charts + Story
 Notebook + Markdown Export
 ```
 
-
 ## CLI Guide
-Basic usage:
-```bash
-pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+
+```text
+$ pogo --help
+usage: pogo [-h] --dataset DATASET [--prompt PROMPT] [--out OUT] [--resume RESUME] [--model MODEL] [--quiet] [--json]
+
+pogo: dataset-agnostic data analysis agent
+
+options:
+  -h, --help         show this help message and exit
+  --dataset DATASET  Path to dataset file or directory
+  --prompt PROMPT    Prompt to run (repeatable)
+  --out OUT          Output directory
+  --resume RESUME    Resume from an existing output directory
+  --model MODEL      LLM model name
+  --quiet            Suppress non-error output
+  --json             Emit JSONL events to stdout
+
+Examples:
+  pogo --dataset data.csv --prompt "Give me an overview" --out output
+  pogo --dataset tests/fixtures/airway \
+    --prompt "Compare treated vs control" \
+    --prompt "Show counts for gene GENE_0001" \
+    --out output
+
+Provider defaults:
+  default provider -> openai
+  openai -> gpt-5.3-codex
+  anthropic -> claude-3-5-sonnet-latest
+  bedrock -> eu.anthropic.claude-opus-4-6-v1
+
+Shortcuts:
+  --model openai (same as --model openai:gpt-5.3-codex)
+  --model anthropic (same as --model anthropic:claude-3-5-sonnet-latest)
+  --model bedrock (same as --model bedrock:eu.anthropic.claude-opus-4-6-v1)
+
+Outputs (written to a new timestamped folder based on --out):
+  If --out output: output/session_<timestamp>/...
+  Otherwise: <out>_<timestamp>/...
+  session_<timestamp>.ipynb (sequential notebook)
+  session_<timestamp>.executed.ipynb
+  session_<timestamp>.md
+  session.json
+  summary.json
+  tables/table_*.csv
+  plots/plot_*.png (if matplotlib is available)
+
+Automation:
+  --json emits JSONL events to stdout
+  --quiet suppresses non-error output
 ```
 
-Specify a model (Bedrock or Anthropic):
+## Providers
+
+<details>
+<summary>OpenAI</summary>
+
+Default model: `gpt-5.3-codex` (strong code + reasoning default for general analysis tasks).
+This model uses the Responses API (it is not supported by chat completions).
+
+Credentials:
 ```bash
-pogo --model eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+export OPENAI_API_KEY="..."
 ```
 
-Specify a model with an explicit provider prefix:
+Examples:
 ```bash
-pogo --model openai:gpt-4o-mini --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+pogo --model openai --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+
+```bash
+pogo --model openai:gpt-5.3-codex --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+</details>
+
+<details>
+<summary>Anthropic</summary>
+
+Default model: `claude-3-5-sonnet-latest` (fast, strong general model for everyday analysis).
+
+Credentials:
+```bash
+export ANTHROPIC_API_KEY="..."
+```
+
+Examples:
+```bash
+pogo --model anthropic --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
 
 ```bash
 pogo --model anthropic:claude-3-5-sonnet-latest --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
+</details>
+
+<details>
+<summary>AWS Bedrock</summary>
+
+Default model: `eu.anthropic.claude-opus-4-6-v1` (highest-capacity Anthropic model available via Bedrock).
+
+Credentials:
+```bash
+export AWS_PROFILE="vincent"
+export AWS_REGION="us-east-1"
+```
+
+Examples:
+```bash
+pogo --model bedrock --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
 
 ```bash
 pogo --model bedrock:eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
-
-Interactive usage (asks for intent if no prompt provided):
-```bash
-pogo --dataset <file-or-folder> --out <output-dir>
-```
-
-Resume a prior session (continue the notebook and session log):
-```bash
-pogo --dataset <file-or-folder> --prompt "<question>" --resume <output-dir>
-```
-
-Machine-readable output (JSONL events):
-```bash
-pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir> --json
-```
-
-Quiet mode (suppress non-error output):
-```bash
-pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir> --quiet
-```
-
-Multiple prompts (run sequentially):
-```bash
-pogo \
-  --dataset tests/fixtures/airway \
-  --prompt "What are the top upregulated genes after dex treatment?" \
-  --prompt "Compare average expression between treated and control samples." \
-  --prompt "How many samples are treated vs control?" \
-  --prompt "Show counts for gene GENE_0001 across samples." \
-  --prompt "Give me an overview of the data." \
-  --out output
-```
-
-Outputs written to a timestamped run directory based on `--out`:
-- Run outputs are written to a timestamped run directory:
-  - If `--out output`, then `output/session_<timestamp>/...`
-  - Otherwise `<out>_<timestamp>/...`
-- `session_<timestamp>.ipynb` (sequential notebook)
-- `session_<timestamp>.executed.ipynb` (papermill‑executed notebook)
-- `session_<timestamp>.md` (markdown export with images)
-- `session.json` (dataset profile + semantic sketch + run history)
-- `summary.json`
-- `tables/table_*.csv`
-- `plots/plot_*.png`
-- `_md_images/` (only when markdown embeds images)
-
-Note: each run creates a new timestamped output folder based on `--out` unless `--resume` is used.
-The notebook embeds plots directly (no need to re‑run cells to see images).
+</details>

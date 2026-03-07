@@ -3,7 +3,7 @@
 **Agent page:** This file is the machine-facing operating guide for agents.
 
 ## Purpose
-Build **pogo**, a dataset-agnostic generative BI app for non-technical biologists. The app must learn dataset structure at runtime, answer user intents with SQL + visualization, and export the full conversation as a sequential Jupyter notebook.
+Build **pogo**, a dataset-agnostic generative data analysis app for non-technical users. The app must learn dataset structure at runtime, answer user intents with SQL + visualization, and export the full conversation as a sequential Jupyter notebook.
 
 ## Core Principles
 - **Dataset-agnostic**: No hardcoded schema assumptions.

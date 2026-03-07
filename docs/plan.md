@@ -1,7 +1,7 @@
-# MVP Plan: Dataset-Agnostic Generative BI App
+# MVP Plan: Dataset-Agnostic Generative Data Analysis App
 
 ## Goal
-Build a lightweight generative BI app that:
+Build a lightweight generative data analysis app that:
 - Learns dataset structure at runtime (no hardcoded schema)
 - Uses an intent-first agent loop (asks only when needed)
 - Generates SQL + visualizations

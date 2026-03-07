@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.bedrock import BedrockConverseModel
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIModel, OpenAIResponsesModel
 from pydantic_ai.providers.bedrock import BedrockProvider
 
 from pogo.notebook_builder import NotebookRecorder
@@ -22,8 +22,14 @@ from pogo.notebook_builder import NotebookRecorder
 from .semantic_sketch import SemanticSketch
 from .viz import generate_plots
 
-DEFAULT_MODEL = "eu.anthropic.claude-opus-4-6-v1"
-SUPPORTED_PROVIDERS = {"anthropic", "bedrock", "openai"}
+DEFAULT_MODEL = "openai"
+SUPPORTED_PROVIDERS = {"anthropic", "bedrock", "openai", "openai-responses"}
+DEFAULT_PROVIDER_MODELS = {
+    "anthropic": "claude-3-5-sonnet-latest",
+    "bedrock": "eu.anthropic.claude-opus-4-6-v1",
+    "openai": "gpt-5.3-codex",
+    "openai-responses": "gpt-5.3-codex",
+}
 
 
 @dataclass
@@ -48,27 +54,45 @@ class AgentDecision(BaseModel):
 
 
 def split_model_name(model_name: str) -> tuple[str, str]:
-    if ":" in model_name:
-        provider, raw_name = model_name.split(":", 1)
+    normalized = model_name.strip()
+    if ":" in normalized:
+        provider, raw_name = normalized.split(":", 1)
         provider = provider.strip().lower()
         raw_name = raw_name.strip()
-        if not provider or not raw_name:
+        if not provider:
             raise ValueError(f"Invalid model name '{model_name}'.")
         if provider not in SUPPORTED_PROVIDERS:
             raise ValueError(f"Unsupported model provider '{provider}'.")
+        if not raw_name:
+            raw_name = DEFAULT_PROVIDER_MODELS[provider]
         return provider, raw_name
-    if model_name.startswith(("eu.anthropic.", "us.anthropic.")):
-        return "bedrock", model_name
-    return "anthropic", model_name
+    provider_only = normalized.lower()
+    if provider_only in SUPPORTED_PROVIDERS:
+        return provider_only, DEFAULT_PROVIDER_MODELS[provider_only]
+    if normalized.startswith(("eu.anthropic.", "us.anthropic.")):
+        return "bedrock", normalized
+    return "anthropic", normalized
 
 
-def _build_model(model_name: str) -> AnthropicModel | BedrockConverseModel | OpenAIModel:
+def _use_openai_responses(provider: str, model_name: str) -> bool:
+    if provider == "openai-responses":
+        return True
+    if provider != "openai":
+        return False
+    return model_name.startswith("gpt-5") or model_name.endswith("-codex")
+
+
+def _build_model(
+    model_name: str,
+) -> AnthropicModel | BedrockConverseModel | OpenAIModel | OpenAIResponsesModel:
     provider, resolved_name = split_model_name(model_name)
     if provider == "bedrock":
         region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
         bedrock_provider = BedrockProvider(region_name=region)
         return BedrockConverseModel(resolved_name, provider=bedrock_provider)
-    if provider == "openai":
+    if provider.startswith("openai"):
+        if _use_openai_responses(provider, resolved_name):
+            return OpenAIResponsesModel(resolved_name)
         return OpenAIModel(resolved_name)
     return AnthropicModel(resolved_name)
 

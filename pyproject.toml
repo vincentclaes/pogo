@@ -1,11 +1,11 @@
 [project]
 name = "pogo"
 version = "0.1.0"
-description = "Dataset-agnostic generative BI app for bioinformatics"
+description = "Dataset-agnostic generative data analysis app for non-technical users"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "LicenseRef-Proprietary"
-keywords = ["bi", "bioinformatics", "duckdb", "llm"]
+keywords = ["data-analysis", "analytics", "duckdb", "llm"]
 authors = [
   {name = "pogo"}
 ]

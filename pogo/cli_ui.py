@@ -81,7 +81,11 @@ def banner() -> None:
     if _quiet or _json_mode:
         return
     console.print("pogo", style="title", markup=False)
-    console.print("Dataset-agnostic generative BI for biologists", style="muted", markup=False)
+    console.print(
+        "Dataset-agnostic generative data analysis for non-technical users",
+        style="muted",
+        markup=False,
+    )
 
 
 def section(title: str) -> None:

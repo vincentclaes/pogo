@@ -47,7 +47,7 @@ from .semantic_sketch import build_semantic_sketch
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="pogo: dataset-agnostic BI agent",
+        description="pogo: dataset-agnostic data analysis agent",
         epilog=(
             "Examples:\n"
             "  pogo --dataset data.csv --prompt \"Give me an overview\" --out output\n"
@@ -55,6 +55,17 @@ def _parse_args() -> argparse.Namespace:
             "    --prompt \"Compare treated vs control\" \\\n"
             "    --prompt \"Show counts for gene GENE_0001\" \\\n"
             "    --out output\n"
+            "\n"
+            "Provider defaults:\n"
+            "  default provider -> openai\n"
+            "  openai -> gpt-5.3-codex\n"
+            "  anthropic -> claude-3-5-sonnet-latest\n"
+            "  bedrock -> eu.anthropic.claude-opus-4-6-v1\n"
+            "\n"
+            "Shortcuts:\n"
+            "  --model openai (same as --model openai:gpt-5.3-codex)\n"
+            "  --model anthropic (same as --model anthropic:claude-3-5-sonnet-latest)\n"
+            "  --model bedrock (same as --model bedrock:eu.anthropic.claude-opus-4-6-v1)\n"
             "\n"
             "Outputs (written to a new timestamped folder based on --out):\n"
             "  If --out output: output/session_<timestamp>/...\n"
@@ -114,6 +125,55 @@ def _next_index(out_dir: Path, prefix: str, suffix: str) -> int:
     return max_index + 1
 
 
+def _has_openai_key() -> bool:
+    return bool(os.environ.get("OPENAI_API_KEY"))
+
+
+def _has_anthropic_key() -> bool:
+    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def _has_bedrock_creds() -> bool:
+    has_region = bool(os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION"))
+    has_creds = bool(
+        os.environ.get("AWS_PROFILE")
+        or os.environ.get("AWS_ACCESS_KEY_ID")
+        or os.environ.get("AWS_SESSION_TOKEN")
+        or os.environ.get("AWS_WEB_IDENTITY_TOKEN_FILE")
+    )
+    return has_region and has_creds
+
+
+def _select_model(requested_model: str) -> str:
+    provider, _ = split_model_name(requested_model)
+    if provider not in {"openai", "openai-responses"}:
+        return requested_model
+    if _has_openai_key():
+        return requested_model
+
+    warn("OpenAI credentials missing; attempting fallback providers.")
+    emit_event("warning", message="OpenAI credentials missing; attempting fallback providers.")
+
+    if _has_anthropic_key():
+        fallback = "anthropic"
+        _, fallback_model = split_model_name(fallback)
+        warn(f"Using Anthropic fallback model: {fallback_model}")
+        emit_event("warning", message=f"Using Anthropic fallback model: {fallback_model}")
+        return f"{fallback}:{fallback_model}"
+
+    if _has_bedrock_creds():
+        fallback = "bedrock"
+        _, fallback_model = split_model_name(fallback)
+        warn(f"Using Bedrock fallback model: {fallback_model}")
+        emit_event("warning", message=f"Using Bedrock fallback model: {fallback_model}")
+        return f"{fallback}:{fallback_model}"
+
+    raise RuntimeError(
+        "No usable LLM credentials found. Set OPENAI_API_KEY, or ANTHROPIC_API_KEY, "
+        "or AWS_PROFILE/AWS_ACCESS_KEY_ID plus AWS_REGION."
+    )
+
+
 def main() -> None:
     args = _parse_args()
     if args.quiet and args.json:
@@ -134,10 +194,14 @@ def main() -> None:
         out_dir = _new_run_dir(base_out)
         session_path = out_dir / "session.json"
 
+    effective_model = _select_model(args.model)
+    args.model = effective_model
+
     banner()
     section("Run")
     kv("Dataset", str(dataset_path))
     kv("Output", str(out_dir.resolve()))
+    kv("Model", args.model)
     emit_event(
         "run_start",
         dataset=str(dataset_path),
@@ -227,7 +291,7 @@ def main() -> None:
                 message="AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.",
             )
             warn("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.")
-    elif provider == "openai":
+    elif provider in {"openai", "openai-responses"}:
         if not os.environ.get("OPENAI_API_KEY"):
             raise RuntimeError("OPENAI_API_KEY is required for OpenAI API usage.")
     else:
