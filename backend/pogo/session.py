@@ -207,6 +207,7 @@ def build_session_payload(
         "semantic_layer": _build_semantic_layer(profiles, sketch),
         "conversation": [],
         "runs": [],
+        "steps": [],
         "artifacts": {},
     }
     return payload

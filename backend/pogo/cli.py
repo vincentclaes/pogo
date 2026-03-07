@@ -233,12 +233,14 @@ def main() -> None:
     llm_agent = build_llm_agent(args.model)
 
     results = list(session_payload.get("runs", [])) if session_payload else []
+    session_payload.setdefault("steps", [])
     plot_counter = _next_index(out_dir / "plots", "plot", ".png")
     table_counter = _next_index(out_dir / "tables", "table", ".csv")
+    step_counter = len(session_payload.get("steps", [])) + 1
     step_index = len(results) + 1
 
     def run_prompt_step(prompt: str, idx: int) -> None:
-        nonlocal plot_counter, table_counter, results, session_payload
+        nonlocal plot_counter, table_counter, step_counter, results, session_payload
         question(idx, prompt)
         emit_event("step_start", index=idx, prompt=prompt)
         deps = AgentDeps(
@@ -249,7 +251,19 @@ def main() -> None:
             out_dir=out_dir,
             plot_counter=plot_counter,
             table_counter=table_counter,
+            step_counter=step_counter,
         )
+        def _persist_step(event: dict) -> None:
+            if event.get("type") != "step":
+                return
+            payload = event.get("step")
+            if not isinstance(payload, dict):
+                return
+            session_payload.setdefault("steps", [])
+            session_payload["steps"].append(payload)
+            write_session_payload(session_path, session_payload)
+
+        deps.emit_event = _persist_step
 
         prior_conversation = list(session_payload.get("conversation", []))
 
@@ -308,6 +322,7 @@ def main() -> None:
             session_payload["conversation"].append(f"Assistant: {decision.summary}")
         plot_counter = deps.plot_counter
         table_counter = deps.table_counter
+        step_counter = deps.step_counter
         session_payload["runs"] = results
         write_session_payload(session_path, session_payload)
 

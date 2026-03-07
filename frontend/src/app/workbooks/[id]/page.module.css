@@ -1,0 +1,256 @@
+.page {
+  padding: 24px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+}
+
+.backLink {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 70vh;
+}
+
+.chatHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  background: rgba(11, 107, 99, 0.12);
+  color: var(--accent);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chatBody {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  max-width: 80%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.userMessage {
+  align-self: flex-end;
+  background: rgba(11, 107, 99, 0.16);
+}
+
+.assistantMessage {
+  align-self: flex-start;
+  background: rgba(212, 141, 76, 0.15);
+}
+
+.chatInput {
+  border-top: 1px solid var(--panel-border);
+  padding: 16px 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.chatInput textarea {
+  flex: 1;
+  resize: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  background: #fffaf5;
+  font-size: 0.95rem;
+}
+
+.chatInput button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chatInput button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.tabButton {
+  flex: 1;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tabButtonActive {
+  color: var(--accent);
+  border-bottom: 3px solid var(--accent);
+}
+
+.storyPanel {
+  flex: 1;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.storyNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.navButton {
+  background: rgba(11, 107, 99, 0.12);
+  border: none;
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.navButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.storyCard {
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  background: #fdfcfb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storyTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.storyMeta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.storySection {
+  border-top: 1px dashed rgba(83, 96, 93, 0.2);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sqlBlock {
+  background: #0f1f1e;
+  color: #f8f8f2;
+  padding: 12px;
+  border-radius: 12px;
+  font-family: "SFMono-Regular", ui-monospace, monospace;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.previewTable th,
+.previewTable td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(83, 96, 93, 0.2);
+}
+
+.plotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.plotGrid img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+}
+
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notebookPanel {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notebookPanel a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}

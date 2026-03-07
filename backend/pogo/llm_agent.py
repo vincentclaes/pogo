@@ -5,7 +5,7 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, List, Optional, Protocol, Tuple, cast
+from typing import Callable, Dict, List, Optional, Protocol, Tuple, cast
 
 import duckdb
 import pandas as pd
@@ -17,6 +17,7 @@ from pydantic_ai.models.bedrock import BedrockConverseModel
 from pydantic_ai.providers.bedrock import BedrockProvider
 
 from pogo.notebook_builder import NotebookRecorder
+from pogo.steps import Step
 
 from .semantic_sketch import SemanticSketch
 from .viz import generate_plots
@@ -34,9 +35,11 @@ class AgentDeps:
     con_lock: threading.Lock = field(default_factory=threading.Lock)
     plot_counter: int = 1
     table_counter: int = 1
+    step_counter: int = 1
     outputs: List[Dict[str, object]] = field(default_factory=list)
     story_written: bool = False
     header_written: bool = False
+    emit_event: Optional[Callable[[Dict[str, object]], None]] = None
 
 
 class AgentDecision(BaseModel):
@@ -61,6 +64,12 @@ def _table_path(out_dir: Path, step_index: int) -> Path:
     table_dir = out_dir / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
     return table_dir / f"table_{step_index}.csv"
+
+def _relative_path(out_dir: Path, path: Path) -> str:
+    try:
+        return str(path.relative_to(out_dir))
+    except ValueError:
+        return str(path)
 
 
 class _HasDeps(Protocol):
@@ -111,8 +120,8 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
         "If the user's intent is vague, provide a concise overview and suggest 2-3 concrete next questions.\n"
         "When you have produced results, respond with action='finish' and a short summary.\n"
         "Use probe_sql for quick checks that should NOT appear in the notebook.\n"
-        "Use run_sql for steps that SHOULD appear in the notebook.\n"
-        "When calling run_sql, you must provide a short title and reasoning for the query.\n"
+        "Use step for steps that SHOULD appear in the notebook.\n"
+        "When calling step, you must provide a short title and reasoning for the query.\n"
         "If a visualization is produced, provide a short title plus a brief 'what we see and why' caption.\n"
         "Before finishing, tell a brief story in the notebook using write_story: what you're doing, what we see, and what we learn.\n"
         "Before finishing, call write_header to set the notebook title, TL;DR, summary, prompts used (with short answers), and steps to run.\n"
@@ -138,7 +147,7 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
         }
 
     @agent.tool
-    def run_sql(
+    def step(
         ctx: RunContext[AgentDeps],
         sql: str,
         reasoning_title: str,
@@ -164,18 +173,26 @@ def build_llm_agent(model_name: str = DEFAULT_MODEL) -> Agent[AgentDeps, AgentDe
             viz_title,
             viz_caption,
         )
-        payload = {
-            "sql": sql,
-            "reasoning_title": reasoning_title,
-            "reasoning": reasoning,
-            "viz_title": viz_title,
-            "viz_caption": viz_caption,
-            "rows": _df_preview(df),
-            "row_count": len(df),
-            "table_path": str(table_path),
-            "plots": [str(p) for p in plot_paths],
-        }
+        relative_plot_paths = [_relative_path(ctx.deps.out_dir, p) for p in plot_paths]
+        table_relative = _relative_path(ctx.deps.out_dir, table_path)
+        step = Step(
+            index=ctx.deps.step_counter,
+            title=reasoning_title,
+            reasoning=reasoning,
+            sql=sql,
+            preview_rows=_df_preview(df),
+            row_count=len(df),
+            table_path=table_relative,
+            plots=relative_plot_paths,
+            viz_title=viz_title,
+            viz_caption=viz_caption,
+            status="done",
+        )
+        ctx.deps.step_counter += 1
+        payload = step.to_payload()
         ctx.deps.outputs.append(payload)
+        if ctx.deps.emit_event:
+            ctx.deps.emit_event({"type": "step", "step": payload})
         return payload
 
     @agent.tool
@@ -281,22 +298,29 @@ def run_llm_loop(
                 viz_title="Quick Preview",
                 viz_caption="A fast visual scan of the preview helps spot obvious patterns or outliers.",
             )
-            deps.outputs.append(
-                {
-                    "sql": sql,
-                    "reasoning_title": "Dataset Overview",
-                    "reasoning": (
-                        "You asked for guidance, so I started with a quick preview of the primary table "
-                        "to understand the columns and shape of the data."
-                    ),
-                    "viz_title": "Quick Preview",
-                    "viz_caption": "A fast visual scan of the preview helps spot obvious patterns or outliers.",
-                    "rows": _df_preview(df),
-                    "row_count": len(df),
-                    "table_path": str(table_path),
-                    "plots": [str(p) for p in plot_paths],
-                }
+            relative_plot_paths = [_relative_path(deps.out_dir, p) for p in plot_paths]
+            table_relative = _relative_path(deps.out_dir, table_path)
+            step = Step(
+                index=deps.step_counter,
+                title="Dataset Overview",
+                reasoning=(
+                    "You asked for guidance, so I started with a quick preview of the primary table "
+                    "to understand the columns and shape of the data."
+                ),
+                sql=sql,
+                preview_rows=_df_preview(df),
+                row_count=len(df),
+                table_path=table_relative,
+                plots=relative_plot_paths,
+                viz_title="Quick Preview",
+                viz_caption="A fast visual scan of the preview helps spot obvious patterns or outliers.",
+                status="done",
             )
+            deps.step_counter += 1
+            payload = step.to_payload()
+            deps.outputs.append(payload)
+            if deps.emit_event:
+                deps.emit_event({"type": "step", "step": payload})
         return decision, clarifications
 
     if not deps.story_written:

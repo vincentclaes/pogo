@@ -1,0 +1,136 @@
+.page {
+  padding: 48px 64px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 2.6vw, 3.2rem);
+  max-width: 520px;
+}
+
+.hero p {
+  color: var(--muted);
+  max-width: 520px;
+  margin-top: 12px;
+  font-size: 1.05rem;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--panel-border);
+  padding: 28px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.workbookCard {
+  background: #fdfcfb;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.workbookCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(22, 30, 28, 0.12);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.formRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.input {
+  flex: 1 1 240px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+  padding: 12px 14px;
+  font-size: 1rem;
+  background: #fffaf5;
+}
+
+.fileInput {
+  flex: 1 1 240px;
+}
+
+.button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(11, 107, 99, 0.2);
+}
+
+.notice {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.error {
+  color: #a93226;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 32px 24px 48px;
+  }
+
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
