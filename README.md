@@ -34,6 +34,11 @@ pre-commit install
 ```
 
 ## LLM Credentials (Required for Runs)
+OpenAI API:
+```bash
+export OPENAI_API_KEY="..."
+```
+
 Anthropic API:
 ```bash
 export ANTHROPIC_API_KEY="..."
@@ -81,6 +86,19 @@ pogo --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 Specify a model (Bedrock or Anthropic):
 ```bash
 pogo --model eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+
+Specify a model with an explicit provider prefix:
+```bash
+pogo --model openai:gpt-4o-mini --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+
+```bash
+pogo --model anthropic:claude-3-5-sonnet-latest --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
+```
+
+```bash
+pogo --model bedrock:eu.anthropic.claude-opus-4-6-v1 --dataset <file-or-folder> --prompt "<question>" --out <output-dir>
 ```
 
 Interactive usage (asks for intent if no prompt provided):

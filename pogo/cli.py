@@ -40,7 +40,7 @@ from .cli_ui import (
     warn,
 )
 from .ingestion import load_dataset
-from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop
+from .llm_agent import DEFAULT_MODEL, AgentDeps, build_llm_agent, run_llm_loop, split_model_name
 from .profiling import profile_dataset
 from .semantic_sketch import build_semantic_sketch
 
@@ -219,13 +219,17 @@ def main() -> None:
         if not prompts:
             prompts = ["Give me an overview of the data."]
 
-    if args.model.startswith(("eu.anthropic.", "us.anthropic.")):
+    provider, _ = split_model_name(args.model)
+    if provider == "bedrock":
         if not (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")):
             emit_event(
                 "warning",
                 message="AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.",
             )
             warn("AWS region not set; set AWS_REGION or AWS_DEFAULT_REGION for Bedrock.")
+    elif provider == "openai":
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is required for OpenAI API usage.")
     else:
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise RuntimeError("ANTHROPIC_API_KEY is required for Anthropic API usage.")

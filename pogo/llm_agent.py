@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.bedrock import BedrockConverseModel
+from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.bedrock import BedrockProvider
 
 from pogo.notebook_builder import NotebookRecorder
@@ -22,6 +23,7 @@ from .semantic_sketch import SemanticSketch
 from .viz import generate_plots
 
 DEFAULT_MODEL = "eu.anthropic.claude-opus-4-6-v1"
+SUPPORTED_PROVIDERS = {"anthropic", "bedrock", "openai"}
 
 
 @dataclass
@@ -45,12 +47,30 @@ class AgentDecision(BaseModel):
     summary: Optional[str] = None
 
 
-def _build_model(model_name: str) -> AnthropicModel | BedrockConverseModel:
+def split_model_name(model_name: str) -> tuple[str, str]:
+    if ":" in model_name:
+        provider, raw_name = model_name.split(":", 1)
+        provider = provider.strip().lower()
+        raw_name = raw_name.strip()
+        if not provider or not raw_name:
+            raise ValueError(f"Invalid model name '{model_name}'.")
+        if provider not in SUPPORTED_PROVIDERS:
+            raise ValueError(f"Unsupported model provider '{provider}'.")
+        return provider, raw_name
     if model_name.startswith(("eu.anthropic.", "us.anthropic.")):
+        return "bedrock", model_name
+    return "anthropic", model_name
+
+
+def _build_model(model_name: str) -> AnthropicModel | BedrockConverseModel | OpenAIModel:
+    provider, resolved_name = split_model_name(model_name)
+    if provider == "bedrock":
         region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
-        provider = BedrockProvider(region_name=region)
-        return BedrockConverseModel(model_name, provider=provider)
-    return AnthropicModel(model_name)
+        bedrock_provider = BedrockProvider(region_name=region)
+        return BedrockConverseModel(resolved_name, provider=bedrock_provider)
+    if provider == "openai":
+        return OpenAIModel(resolved_name)
+    return AnthropicModel(resolved_name)
 
 
 def _df_preview(df: pd.DataFrame, limit: int = 10) -> List[dict]:
